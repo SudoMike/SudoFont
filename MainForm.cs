@@ -19,6 +19,9 @@ namespace SudoFont
 		{
 			InitializeComponent();
 			_fontPreview.BackColor = Color.Black;
+			_outputPreview.BackColor = Color.Black;
+
+			_alphaOnlyControl.Checked = true;
 
 			// Setup a default character set.
 			ResetCharacterSet();
@@ -55,7 +58,7 @@ namespace SudoFont
 
 			_fontsList.SelectedItem = "Arial";
 			_sizeCombo.SelectedItem = 12;
-
+			
 			Recalculate();
 		}
 
@@ -95,9 +98,20 @@ namespace SudoFont
 			BuildPackedImage();
 
 			if ( _packedImage != null )
-				_outputImageSizeLabel.Text = string.Format( "{0} x {1}", _packedImage.Width, _packedImage.Height );
+			{
+				string sizeStr = "";
+				int numBytes = ( _packedImage.Width * _packedImage.Height * 4 );
+				if ( numBytes >= 1024*1024 )
+					sizeStr = string.Format( "{0:F2}M", numBytes / ( 1024.0 * 1024.0 ) );
+				else
+					sizeStr = string.Format( "{0}k", numBytes / 1024 );
+
+				_outputImageSizeLabel.Text = string.Format( "{0} x {1}, RGBA Size: {2}", _packedImage.Width, _packedImage.Height, sizeStr );
+			}
 			else
+			{
 				_outputImageSizeLabel.Text = "( error )";
+			}
 
 			_fontPreview.Invalidate();
 		}
@@ -172,7 +186,7 @@ namespace SudoFont
 						c.Width = extents.Width;
 						c.Height = extents.Height;
 
-						g.FillRectangle( blackBrush, new Rectangle( 0, 0, extents.X + extents.Width + 1, extents.Y + extents.Height + 1 ) );
+						g.FillRectangle( blackBrush, new Rectangle( 0, 0, extents.X + extents.Width, extents.Y + extents.Height ) );
 					}
 				}
 			}
@@ -206,25 +220,28 @@ namespace SudoFont
 
 			// Now render the final bitmap.
 			_packedImage = new Bitmap( packedWidth, NextPowerOfTwo( packedHeight ) );
-			RenderPackedImage( _packedImage, infos );
+			RenderPackedImage( _packedImage, infos, _alphaOnlyControl.Checked );
 		}
 
-		static void RenderPackedImage( Bitmap bitmap, CharacterInfo[] infos )
+		static void RenderPackedImage( Bitmap bitmap, CharacterInfo[] infos, bool alphaOnly )
 		{
 			using ( Graphics g = Graphics.FromImage( bitmap ) )
 			{
-				g.Clear( Color.Black );
+				if ( alphaOnly )
+					g.Clear( Color.FromArgb( 0 ) );
+				else
+					g.Clear( Color.Black );
 			}
 
 			BitmapData bm = bitmap.LockBits( new Rectangle( 0, 0, bitmap.Width, bitmap.Height ), ImageLockMode.WriteOnly, bitmap.PixelFormat );
 			
 			foreach ( CharacterInfo c in infos )
-				CopyImageData( c.Image, c.Width, c.Height, bm, c.PackedX, c.PackedY );
+				CopyImageData( c.Image, c.Width, c.Height, bm, c.PackedX, c.PackedY, alphaOnly );
 
 			bitmap.UnlockBits( bm );
 		}
 
-		static void CopyImageData( uint[] imageData, int imageWidth, int imageHeight, BitmapData dest, int destX, int destY )
+		static void CopyImageData( uint[] imageData, int imageWidth, int imageHeight, BitmapData dest, int destX, int destY, bool alphaOnly )
 		{
 			unsafe
 			{
@@ -242,7 +259,19 @@ namespace SudoFont
 						if ( outX < 0 || outX > dest.Width )
 							continue;
 
-						pDestBase[ outY * ( dest.Stride >> 2 ) + outX ] = imageData[ y * imageWidth + x ];
+						UInt32 color = imageData[ y * imageWidth + x ];
+						
+						if ( alphaOnly )
+						{
+							// We have to guess at an alpha value here. We'll do that based on R, G, and B.
+							uint r = ( color >> 16 ) & 0xFF;
+							uint g = ( color >>  8 ) & 0xFF;
+							uint b = ( color >>  0 ) & 0xFF;
+							uint alpha = ( r + g + b ) / 3;
+							color = 0xFFFFFF | ( alpha << 24 );
+						}
+
+						pDestBase[ outY * ( dest.Stride >> 2 ) + outX ] = color;
 					}
 				}
 			}
@@ -405,20 +434,6 @@ namespace SudoFont
 		{
 			SizeF size = g.MeasureString( ch.ToString(), font );
 			return new Rectangle( 0, 0, (int)Math.Ceiling( size.Width ), (int)Math.Ceiling( size.Height ) );
-
-
-			StringFormat stringFormat = new StringFormat( StringFormat.GenericTypographic );
-			stringFormat.SetMeasurableCharacterRanges( new [] { new CharacterRange( 0, 1 ) } );
-			Region[] regions = g.MeasureCharacterRanges( ch.ToString(), font, Rectangle.Empty, stringFormat );
-						
-			if ( regions.Length == 0 )
-				return null;
-
-			RectangleF bounds = regions[0].GetBounds( g );
-			foreach ( var region in regions.Take( 1 ) )
-				bounds = RectangleF.Union( bounds, region.GetBounds( g ) );
-
-			return new Rectangle( (int)bounds.X, (int)bounds.Y, (int)Math.Ceiling( bounds.Width ), (int)Math.Ceiling( bounds.Height ) );
 		}
 
 		private void _fontPreview_Paint( object sender, PaintEventArgs e )
@@ -441,8 +456,21 @@ namespace SudoFont
 			if ( _packedImage == null )
 				return;
 
+			// Center it.
+			Point pt = new Point()
+			{
+				X = ( _outputPreview.Width - _packedImage.Width ) / 2,
+				Y = ( _outputPreview.Height - _packedImage.Height ) / 2
+			};
+
+			// Draw the preview image.
 			Graphics g = e.Graphics;
-			g.DrawImage( _packedImage, new Point( 0, 0 ) );
+			g.DrawImage( _packedImage, pt );
+
+			// Draw a bounding rectangle.
+			Rectangle outlineRect = new Rectangle( pt.X, pt.Y, _packedImage.Width, _packedImage.Height );
+			outlineRect.Inflate( 2, 2 );
+			g.DrawRectangle( new Pen( Color.Gray ), outlineRect );
 		}
 
 		private void _fontsList_SelectedIndexChanged( object sender, EventArgs e )
@@ -496,6 +524,16 @@ namespace SudoFont
 			Recalculate();
 		}
 
+		private void _alphaOnlyControl_CheckedChanged( object sender, EventArgs e )
+		{
+			Recalculate();
+		}
+
+		private void _resetCharacterSetButton_Click( object sender, EventArgs e )
+		{
+			ResetCharacterSet();
+		}
+
 		void ResetCharacterSet()
 		{
 			string characterSetText = "";
@@ -504,6 +542,30 @@ namespace SudoFont
 				characterSetText += ( (Char)i ).ToString();
 			}
 			_characterSetControl.Text = characterSetText;
+		}
+
+		private void MainForm_Shown( object sender, EventArgs e )
+		{
+			// Default focus control is the fonts list.
+			_fontsList.Focus();
+		}
+
+		private void embedHelp_Click( object sender, EventArgs e )
+		{
+			MessageBox.Show( "If you embed the configuration in the font file, then you don't need a separate configuration file. You can just open the (exported) font file in this application to load the configuration." );
+		}
+
+		private void openToolStripMenuItem_Click( object sender, EventArgs e )
+		{
+			OpenFileDialog ofd = new OpenFileDialog();
+
+			ofd.InitialDirectory = Environment.CurrentDirectory;
+			ofd.Filter = "Configuration Files (*.sfc)|*.sfc|Font Files (*.sf)|*.sf|All files (*.*)|*.*" ;
+			ofd.FilterIndex = 0;
+
+			if ( ofd.ShowDialog() == DialogResult.OK )
+			{
+			}
 		}
 
 
