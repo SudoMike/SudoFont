@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -51,15 +52,48 @@ namespace SudoFont
 			_sizeCombo.Items.Add( 72 );
 
 			_fontStyleControls = new FontStyleControl[4];
-			_fontStyleControls[0] = new FontStyleControl() { Control = _boldOption, Style = FontStyle.Bold };
-			_fontStyleControls[1] = new FontStyleControl() { Control = _italicOption, Style = FontStyle.Italic };
-			_fontStyleControls[2] = new FontStyleControl() { Control = _underlineOption, Style = FontStyle.Underline };
-			_fontStyleControls[3] = new FontStyleControl() { Control = _strikeoutOption, Style = FontStyle.Strikeout };
+			_fontStyleControls[0] = new FontStyleControl() { Control = _boldOption, Style = FontStyle.Bold, ConfigFileKey = "IsBold" };
+			_fontStyleControls[1] = new FontStyleControl() { Control = _italicOption, Style = FontStyle.Italic, ConfigFileKey = "IsItalic" };
+			_fontStyleControls[2] = new FontStyleControl() { Control = _underlineOption, Style = FontStyle.Underline, ConfigFileKey = "IsUnderline" };
+			_fontStyleControls[3] = new FontStyleControl() { Control = _strikeoutOption, Style = FontStyle.Strikeout, ConfigFileKey = "IsStrikeout" };
 
 			_fontsList.SelectedItem = "Arial";
 			_sizeCombo.SelectedItem = 12;
 			
 			Recalculate();
+		}
+
+		string CurrentSelectedFontFamilyName
+		{
+			get
+			{
+				return _fontsList.SelectedItem.ToString();
+			}
+
+			set
+			{
+				_fontsList.SelectedItem = value;
+			}
+		}
+
+		int CurrentComboBoxFontSize
+		{
+			get
+			{
+				try
+				{
+					return Convert.ToInt32( _sizeCombo.Text );
+				}
+				catch ( Exception )
+				{
+					return 12;
+				}
+			}
+
+			set
+			{
+				_sizeCombo.Text = value.ToString();
+			}
 		}
 
 		void Recalculate()
@@ -68,7 +102,7 @@ namespace SudoFont
 				return;
 
 			// Get the font family.
-			string fontFamily = _fontsList.SelectedItem.ToString();
+			string fontFamily = CurrentSelectedFontFamilyName;
 			FontFamily family = new FontFamily( fontFamily );
 
 			// Setup the FontStyle.
@@ -84,14 +118,7 @@ namespace SudoFont
 			}
 
 			// Figure out the size.
-			int size = 12;
-			try
-			{
-				size = Convert.ToInt32( _sizeCombo.Text );
-			}
-			catch ( Exception )
-			{
-			}
+			int size = CurrentComboBoxFontSize;
 
 			_currentFont = new Font( fontFamily, size, style );
 
@@ -99,14 +126,15 @@ namespace SudoFont
 
 			if ( _packedImage != null )
 			{
-				string sizeStr = "";
-				int numBytes = ( _packedImage.Width * _packedImage.Height * 4 );
-				if ( numBytes >= 1024*1024 )
-					sizeStr = string.Format( "{0:F2}M", numBytes / ( 1024.0 * 1024.0 ) );
-				else
-					sizeStr = string.Format( "{0}k", numBytes / 1024 );
+				int numRawBytes = ( _packedImage.Width * _packedImage.Height * 4 );
+				int pngSize;
+				using ( MemoryStream tempStream = new MemoryStream() )
+				{
+					_packedImage.Save( tempStream, ImageFormat.Png );
+					pngSize = (int)tempStream.Length;
+				}
 
-				_outputImageSizeLabel.Text = string.Format( "{0} x {1}, RGBA Size: {2}", _packedImage.Width, _packedImage.Height, sizeStr );
+				_outputImageSizeLabel.Text = string.Format( "{0} x {1}, RGBA size: {2}, PNG size: {3}", _packedImage.Width, _packedImage.Height, FormatSizeString( numRawBytes ), FormatSizeString( pngSize ) );
 			}
 			else
 			{
@@ -114,6 +142,14 @@ namespace SudoFont
 			}
 
 			_fontPreview.Invalidate();
+		}
+
+		string FormatSizeString( int numBytes )
+		{
+			if ( numBytes >= 1024*1024 )
+				return string.Format( "{0:F2}M", numBytes / ( 1024.0 * 1024.0 ) );
+			else
+				return string.Format( "{0}k", numBytes / 1024 );
 		}
 
 		[DebuggerDisplay( "Char: {Character}, {Width} x {Height}, Packed: ({PackedX}, {PackedY})" )]
@@ -555,7 +591,7 @@ namespace SudoFont
 			MessageBox.Show( "If you embed the configuration in the font file, then you don't need a separate configuration file. You can just open the (exported) font file in this application to load the configuration." );
 		}
 
-		private void openToolStripMenuItem_Click( object sender, EventArgs e )
+		private void openMenuItem_Click( object sender, EventArgs e )
 		{
 			OpenFileDialog ofd = new OpenFileDialog();
 
@@ -568,7 +604,164 @@ namespace SudoFont
 			}
 		}
 
+		private void saveMenuItem_Click( object sender, EventArgs e )
+		{
+			if ( _prevFontFilename == null )
+				FontFile_SaveAs();
+			else
+				FontFile_Save();
+		}
 
+		private void saveAsMenuItem_Click( object sender, EventArgs e )
+		{
+			FontFile_SaveAs();
+		}
+
+		private void importConfigurationMenuItem_Click( object sender, EventArgs e )
+		{
+			OpenFileDialog dlg = new OpenFileDialog();
+			dlg.InitialDirectory = Environment.CurrentDirectory;
+			dlg.Filter = "Config Files (*.sfc)|*.sfc|All Files (*.*)|*.*";
+			dlg.FilterIndex = 0;
+
+			if ( dlg.ShowDialog() == DialogResult.OK )
+			{
+				ImportConfiguration( dlg.FileName );
+			}
+		}
+
+		bool ImportConfiguration( string filename )
+		{
+			using ( StreamReader reader = new StreamReader( filename ) )
+			{
+				if ( reader.ReadLine() != ConfigFilenameHeader )
+					return OnLoadError( "Missing header" );
+
+				Dictionary< string, string > options = new Dictionary<string,string>();
+				int curLine = 0;
+				while ( true )
+				{
+					++curLine;
+					string line = reader.ReadLine();
+					if ( line == null )
+						break;
+
+					int i = line.IndexOf( '=' );
+					if ( i == -1 )
+						return OnLoadError( "Invalid key/value format on line {0}", i );
+
+					string key = line.Substring( 0, i - 1 );
+					string value = line.Substring( i + 2 );
+					options[key] = value;
+				}
+
+				try
+				{
+					CurrentSelectedFontFamilyName = GetOption( options, ConfigFileKey_FontFamily );
+					CurrentComboBoxFontSize = Convert.ToInt32( GetOption( options, ConfigFileKey_FontSize ) );
+
+					foreach ( var ctl in _fontStyleControls )
+						ctl.Control.Checked = Convert.ToBoolean( GetOption( options, ctl.ConfigFileKey ) );
+
+					_alphaOnlyControl.Checked = Convert.ToBoolean( GetOption( options, ConfigFileKey_AlphaOnly ) );
+					_embedConfigurationOption.Checked = Convert.ToBoolean( GetOption( options, ConfigFileKey_EmbedConfigInFontFile ) );
+				}
+				catch ( Exception )
+				{
+					return OnLoadError( "Error parsing configuration file" );
+				}
+			}
+
+			_prevConfigFilename = filename;
+			return true;
+		}
+
+		string GetOption( Dictionary< string, string > options, string key )
+		{
+			return options[key];
+		}
+
+		bool OnLoadError( string error, params object[] args )
+		{
+			string str = string.Format( error, args );
+			MessageBox.Show( str );
+			return false;
+		}
+
+		private void exportConfigurationMenuItem_Click( object sender, EventArgs e )
+		{
+			SaveFileDialog dlg = new SaveFileDialog();
+			dlg.InitialDirectory = Environment.CurrentDirectory;
+			dlg.Filter = "Config Files (*.sfc)|*.sfc|All Files (*.*)|*.*";
+			dlg.FilterIndex = 0;
+
+			if ( dlg.ShowDialog() == DialogResult.OK )
+			{
+				using ( StreamWriter writer = new StreamWriter( dlg.FileName ) )
+				{
+					writer.WriteLine( ConfigFilenameHeader );
+					WriteOption( writer, ConfigFileKey_FontFamily, CurrentSelectedFontFamilyName );
+					WriteOption( writer, ConfigFileKey_FontSize, CurrentComboBoxFontSize );
+
+					foreach ( var ctl in _fontStyleControls )
+						WriteOption( writer, ctl.ConfigFileKey, ctl.Control.Checked );
+
+					WriteOption( writer, ConfigFileKey_AlphaOnly, _alphaOnlyControl.Checked );
+					WriteOption( writer, ConfigFileKey_EmbedConfigInFontFile, _embedConfigurationOption.Checked );
+				}
+
+				_prevConfigFilename = dlg.FileName;
+			}
+		}
+
+		void WriteOption( StreamWriter writer, string optionName, string value )
+		{
+			writer.WriteLine( string.Format( "{0} = {1}", optionName, value ) );
+		}
+
+		void WriteOption( StreamWriter writer, string optionName, int value )
+		{
+			writer.WriteLine( string.Format( "{0} = {1}", optionName, value ) );
+		}
+
+		void WriteOption( StreamWriter writer, string optionName, bool value )
+		{
+			writer.WriteLine( string.Format( "{0} = {1}", optionName, value ) );
+		}
+
+		private void exitMenuItem_Click( object sender, EventArgs e )
+		{
+			Close();
+		}
+
+		void FontFile_Save()
+		{
+		}
+
+		void FontFile_SaveAs()
+		{
+			// Find out how they want to save the font file.
+			SaveFileDialog dlg = new SaveFileDialog();
+			dlg.InitialDirectory = Environment.CurrentDirectory;
+			dlg.Filter = "Font Files (*.sfn)|*.sfn|All Files (*.*)|*.*";
+			dlg.FilterIndex = 0;
+
+			if ( dlg.ShowDialog() == DialogResult.OK )
+			{
+				_prevConfigFilename = dlg.FileName;
+				FontFile_Save();
+			}
+		}
+
+
+		static readonly string ConfigFilenameHeader = "SudoFont Font Configuration File v1.0";
+		static readonly string ConfigFileKey_FontFamily = "FontFamily";
+		static readonly string ConfigFileKey_FontSize = "FontSize";
+		static readonly string ConfigFileKey_AlphaOnly = "IsAlphaOnly";
+		static readonly string ConfigFileKey_EmbedConfigInFontFile = "EmbedConfigInFontFile";
+
+		string _prevFontFilename = null;
+		string _prevConfigFilename = null;
 
 		string _previewText = "0123456789 _*+- ()[]#@\nABCDEFGHIJKLMNOPQRSTUVWXYZ\nabcdefghijklmnopqrstuvwxyz";
 
@@ -576,6 +769,7 @@ namespace SudoFont
 		{
 			public CheckBox Control;
 			public FontStyle Style;
+			public string ConfigFileKey;
 		}
 
 		FontStyleControl[] _fontStyleControls;

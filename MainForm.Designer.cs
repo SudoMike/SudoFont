@@ -40,22 +40,25 @@
 			this._italicOption = new System.Windows.Forms.CheckBox();
 			this._boldOption = new System.Windows.Forms.CheckBox();
 			this._sizeCombo = new System.Windows.Forms.ComboBox();
-			this._fontPreview = new System.Windows.Forms.Panel();
 			this._fontsList = new System.Windows.Forms.ListBox();
+			this._fontPreview = new System.Windows.Forms.Panel();
 			this._outputPreview = new System.Windows.Forms.Panel();
 			this._outputImageSizeLabel = new System.Windows.Forms.Label();
 			this._characterSetControl = new System.Windows.Forms.TextBox();
 			this.groupBox2 = new System.Windows.Forms.GroupBox();
-			this._alphaOnlyControl = new System.Windows.Forms.CheckBox();
 			this._resetCharacterSetButton = new System.Windows.Forms.Button();
+			this._alphaOnlyControl = new System.Windows.Forms.CheckBox();
 			this.menuStrip1 = new System.Windows.Forms.MenuStrip();
 			this.fileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+			this.openToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
 			this.saveToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
 			this.saveAsToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-			this.exitToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+			this.toolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
+			this.loadConfigurationToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
 			this.exportFontImageToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+			this.toolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
+			this.exitToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
 			this._embedConfigurationOption = new System.Windows.Forms.CheckBox();
-			this.openToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
 			_sizeLabel = new System.Windows.Forms.Label();
 			label1 = new System.Windows.Forms.Label();
 			label2 = new System.Windows.Forms.Label();
@@ -64,8 +67,8 @@
 			groupBox3 = new System.Windows.Forms.GroupBox();
 			embedHelp = new System.Windows.Forms.Button();
 			groupBox1.SuspendLayout();
-			this.groupBox2.SuspendLayout();
 			groupBox3.SuspendLayout();
+			this.groupBox2.SuspendLayout();
 			this.menuStrip1.SuspendLayout();
 			this.SuspendLayout();
 			// 
@@ -175,6 +178,28 @@
 			label4.TabIndex = 10;
 			label4.Text = "Character Set";
 			// 
+			// groupBox3
+			// 
+			groupBox3.Controls.Add(this._fontsList);
+			groupBox3.Controls.Add(this._fontPreview);
+			groupBox3.Controls.Add(groupBox1);
+			groupBox3.Controls.Add(label1);
+			groupBox3.Location = new System.Drawing.Point(12, 27);
+			groupBox3.Name = "groupBox3";
+			groupBox3.Size = new System.Drawing.Size(809, 301);
+			groupBox3.TabIndex = 13;
+			groupBox3.TabStop = false;
+			groupBox3.Text = "Font";
+			// 
+			// _fontsList
+			// 
+			this._fontsList.FormattingEnabled = true;
+			this._fontsList.Location = new System.Drawing.Point(6, 19);
+			this._fontsList.Name = "_fontsList";
+			this._fontsList.Size = new System.Drawing.Size(260, 277);
+			this._fontsList.TabIndex = 1;
+			this._fontsList.SelectedIndexChanged += new System.EventHandler(this._fontsList_SelectedIndexChanged);
+			// 
 			// _fontPreview
 			// 
 			this._fontPreview.BackColor = System.Drawing.SystemColors.ActiveBorder;
@@ -185,14 +210,15 @@
 			this._fontPreview.TabIndex = 0;
 			this._fontPreview.Paint += new System.Windows.Forms.PaintEventHandler(this._fontPreview_Paint);
 			// 
-			// _fontsList
+			// embedHelp
 			// 
-			this._fontsList.FormattingEnabled = true;
-			this._fontsList.Location = new System.Drawing.Point(6, 19);
-			this._fontsList.Name = "_fontsList";
-			this._fontsList.Size = new System.Drawing.Size(260, 277);
-			this._fontsList.TabIndex = 1;
-			this._fontsList.SelectedIndexChanged += new System.EventHandler(this._fontsList_SelectedIndexChanged);
+			embedHelp.Location = new System.Drawing.Point(311, 31);
+			embedHelp.Name = "embedHelp";
+			embedHelp.Size = new System.Drawing.Size(19, 21);
+			embedHelp.TabIndex = 11;
+			embedHelp.Text = "?";
+			embedHelp.UseVisualStyleBackColor = true;
+			embedHelp.Click += new System.EventHandler(this.embedHelp_Click);
 			// 
 			// _outputPreview
 			// 
@@ -239,6 +265,16 @@
 			this.groupBox2.TabStop = false;
 			this.groupBox2.Text = "Export";
 			// 
+			// _resetCharacterSetButton
+			// 
+			this._resetCharacterSetButton.Location = new System.Drawing.Point(728, 63);
+			this._resetCharacterSetButton.Name = "_resetCharacterSetButton";
+			this._resetCharacterSetButton.Size = new System.Drawing.Size(75, 20);
+			this._resetCharacterSetButton.TabIndex = 10;
+			this._resetCharacterSetButton.Text = "Reset";
+			this._resetCharacterSetButton.UseVisualStyleBackColor = true;
+			this._resetCharacterSetButton.Click += new System.EventHandler(this._resetCharacterSetButton_Click);
+			// 
 			// _alphaOnlyControl
 			// 
 			this._alphaOnlyControl.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
@@ -249,29 +285,6 @@
 			this._alphaOnlyControl.Text = "Alpha Only";
 			this._alphaOnlyControl.UseVisualStyleBackColor = true;
 			this._alphaOnlyControl.CheckedChanged += new System.EventHandler(this._alphaOnlyControl_CheckedChanged);
-			// 
-			// groupBox3
-			// 
-			groupBox3.Controls.Add(this._fontsList);
-			groupBox3.Controls.Add(this._fontPreview);
-			groupBox3.Controls.Add(groupBox1);
-			groupBox3.Controls.Add(label1);
-			groupBox3.Location = new System.Drawing.Point(12, 27);
-			groupBox3.Name = "groupBox3";
-			groupBox3.Size = new System.Drawing.Size(809, 301);
-			groupBox3.TabIndex = 13;
-			groupBox3.TabStop = false;
-			groupBox3.Text = "Font";
-			// 
-			// _resetCharacterSetButton
-			// 
-			this._resetCharacterSetButton.Location = new System.Drawing.Point(728, 63);
-			this._resetCharacterSetButton.Name = "_resetCharacterSetButton";
-			this._resetCharacterSetButton.Size = new System.Drawing.Size(75, 20);
-			this._resetCharacterSetButton.TabIndex = 10;
-			this._resetCharacterSetButton.Text = "Reset";
-			this._resetCharacterSetButton.UseVisualStyleBackColor = true;
-			this._resetCharacterSetButton.Click += new System.EventHandler(this._resetCharacterSetButton_Click);
 			// 
 			// menuStrip1
 			// 
@@ -289,66 +302,83 @@
             this.openToolStripMenuItem,
             this.saveToolStripMenuItem,
             this.saveAsToolStripMenuItem,
+            this.toolStripSeparator1,
+            this.loadConfigurationToolStripMenuItem,
             this.exportFontImageToolStripMenuItem,
+            this.toolStripSeparator2,
             this.exitToolStripMenuItem});
 			this.fileToolStripMenuItem.Name = "fileToolStripMenuItem";
 			this.fileToolStripMenuItem.Size = new System.Drawing.Size(37, 20);
 			this.fileToolStripMenuItem.Text = "&File";
 			// 
+			// openToolStripMenuItem
+			// 
+			this.openToolStripMenuItem.Name = "openToolStripMenuItem";
+			this.openToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.O)));
+			this.openToolStripMenuItem.Size = new System.Drawing.Size(224, 22);
+			this.openToolStripMenuItem.Text = "&Open";
+			this.openToolStripMenuItem.Click += new System.EventHandler(this.openMenuItem_Click);
+			// 
 			// saveToolStripMenuItem
 			// 
 			this.saveToolStripMenuItem.Name = "saveToolStripMenuItem";
 			this.saveToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.S)));
-			this.saveToolStripMenuItem.Size = new System.Drawing.Size(215, 22);
-			this.saveToolStripMenuItem.Text = "&Save Configuration";
+			this.saveToolStripMenuItem.Size = new System.Drawing.Size(224, 22);
+			this.saveToolStripMenuItem.Text = "&Save";
+			this.saveToolStripMenuItem.Click += new System.EventHandler(this.saveMenuItem_Click);
 			// 
 			// saveAsToolStripMenuItem
 			// 
 			this.saveAsToolStripMenuItem.Name = "saveAsToolStripMenuItem";
-			this.saveAsToolStripMenuItem.Size = new System.Drawing.Size(215, 22);
-			this.saveAsToolStripMenuItem.Text = "Save Configuration &As";
+			this.saveAsToolStripMenuItem.Size = new System.Drawing.Size(224, 22);
+			this.saveAsToolStripMenuItem.Text = "Save &As";
+			this.saveAsToolStripMenuItem.Click += new System.EventHandler(this.saveAsMenuItem_Click);
 			// 
-			// exitToolStripMenuItem
+			// toolStripSeparator1
 			// 
-			this.exitToolStripMenuItem.Name = "exitToolStripMenuItem";
-			this.exitToolStripMenuItem.Size = new System.Drawing.Size(215, 22);
-			this.exitToolStripMenuItem.Text = "E&xit";
+			this.toolStripSeparator1.Name = "toolStripSeparator1";
+			this.toolStripSeparator1.Size = new System.Drawing.Size(221, 6);
+			// 
+			// loadConfigurationToolStripMenuItem
+			// 
+			this.loadConfigurationToolStripMenuItem.Name = "loadConfigurationToolStripMenuItem";
+			this.loadConfigurationToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.I)));
+			this.loadConfigurationToolStripMenuItem.Size = new System.Drawing.Size(224, 22);
+			this.loadConfigurationToolStripMenuItem.Text = "&Import Configuration";
+			this.loadConfigurationToolStripMenuItem.Click += new System.EventHandler(this.importConfigurationMenuItem_Click);
 			// 
 			// exportFontImageToolStripMenuItem
 			// 
 			this.exportFontImageToolStripMenuItem.Name = "exportFontImageToolStripMenuItem";
 			this.exportFontImageToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.E)));
-			this.exportFontImageToolStripMenuItem.Size = new System.Drawing.Size(215, 22);
-			this.exportFontImageToolStripMenuItem.Text = "&Export Font Image";
+			this.exportFontImageToolStripMenuItem.Size = new System.Drawing.Size(224, 22);
+			this.exportFontImageToolStripMenuItem.Text = "Export &Configuration";
+			this.exportFontImageToolStripMenuItem.Click += new System.EventHandler(this.exportConfigurationMenuItem_Click);
+			// 
+			// toolStripSeparator2
+			// 
+			this.toolStripSeparator2.Name = "toolStripSeparator2";
+			this.toolStripSeparator2.Size = new System.Drawing.Size(221, 6);
+			// 
+			// exitToolStripMenuItem
+			// 
+			this.exitToolStripMenuItem.Name = "exitToolStripMenuItem";
+			this.exitToolStripMenuItem.Size = new System.Drawing.Size(224, 22);
+			this.exitToolStripMenuItem.Text = "E&xit";
+			this.exitToolStripMenuItem.Click += new System.EventHandler(this.exitMenuItem_Click);
 			// 
 			// _embedConfigurationOption
 			// 
 			this._embedConfigurationOption.AutoSize = true;
 			this._embedConfigurationOption.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
+			this._embedConfigurationOption.Checked = true;
+			this._embedConfigurationOption.CheckState = System.Windows.Forms.CheckState.Checked;
 			this._embedConfigurationOption.Location = new System.Drawing.Point(139, 380);
 			this._embedConfigurationOption.Name = "_embedConfigurationOption";
 			this._embedConfigurationOption.Size = new System.Drawing.Size(178, 17);
 			this._embedConfigurationOption.TabIndex = 8;
 			this._embedConfigurationOption.Text = "Embed Configuration in Font File";
 			this._embedConfigurationOption.UseVisualStyleBackColor = true;
-			// 
-			// embedHelp
-			// 
-			embedHelp.Location = new System.Drawing.Point(311, 31);
-			embedHelp.Name = "embedHelp";
-			embedHelp.Size = new System.Drawing.Size(19, 21);
-			embedHelp.TabIndex = 11;
-			embedHelp.Text = "?";
-			embedHelp.UseVisualStyleBackColor = true;
-			embedHelp.Click += new System.EventHandler(this.embedHelp_Click);
-			// 
-			// openToolStripMenuItem
-			// 
-			this.openToolStripMenuItem.Name = "openToolStripMenuItem";
-			this.openToolStripMenuItem.ShortcutKeys = ((System.Windows.Forms.Keys)((System.Windows.Forms.Keys.Control | System.Windows.Forms.Keys.O)));
-			this.openToolStripMenuItem.Size = new System.Drawing.Size(215, 22);
-			this.openToolStripMenuItem.Text = "&Open";
-			this.openToolStripMenuItem.Click += new System.EventHandler(this.openToolStripMenuItem_Click);
 			// 
 			// MainForm
 			// 
@@ -365,10 +395,10 @@
 			this.Shown += new System.EventHandler(this.MainForm_Shown);
 			groupBox1.ResumeLayout(false);
 			groupBox1.PerformLayout();
-			this.groupBox2.ResumeLayout(false);
-			this.groupBox2.PerformLayout();
 			groupBox3.ResumeLayout(false);
 			groupBox3.PerformLayout();
+			this.groupBox2.ResumeLayout(false);
+			this.groupBox2.PerformLayout();
 			this.menuStrip1.ResumeLayout(false);
 			this.menuStrip1.PerformLayout();
 			this.ResumeLayout(false);
@@ -399,6 +429,9 @@
 		private System.Windows.Forms.ToolStripMenuItem exportFontImageToolStripMenuItem;
 		private System.Windows.Forms.CheckBox _embedConfigurationOption;
 		private System.Windows.Forms.ToolStripMenuItem openToolStripMenuItem;
+		private System.Windows.Forms.ToolStripSeparator toolStripSeparator1;
+		private System.Windows.Forms.ToolStripMenuItem loadConfigurationToolStripMenuItem;
+		private System.Windows.Forms.ToolStripSeparator toolStripSeparator2;
 	}
 }
 
