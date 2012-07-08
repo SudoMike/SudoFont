@@ -164,7 +164,7 @@ namespace SudoFont
 
 			Brush whiteBrush = new SolidBrush( Color.White );
 			Brush blackBrush = new SolidBrush( Color.Black );
-
+			
 			// Get all the bitmap data and extents for the characters.
 			using ( Bitmap tempBitmap = new Bitmap( 512, 512, PixelFormat.Format32bppArgb ) )
 			{
@@ -180,7 +180,6 @@ namespace SudoFont
 						infos[i] = c;
 
 						c.Character = characterSet[i];
-						c.XAdvance = FontServices.GetCharWidthABC( c.Character, _currentFont, g ).Total;
 
 						// Draw this character into tempBitmap.
 						g.DrawString( c.Character.ToString(), _currentFont, whiteBrush, new Point( 0, 0 ) );
@@ -200,8 +199,8 @@ namespace SudoFont
 						ExtractImageData( tempBitmap, startingExtents, out c.Image, out extents );
 						c.XOffset = extents.X;
 						c.YOffset = extents.Y;
-						c.Width = extents.Width;
-						c.Height = extents.Height;
+						c.PackedWidth = extents.Width;
+						c.PackedHeight = extents.Height;
 
 						g.FillRectangle( blackBrush, new Rectangle( 0, 0, extents.X + extents.Width, extents.Y + extents.Height ) );
 					}
@@ -212,15 +211,21 @@ namespace SudoFont
 			Size maxSize = new System.Drawing.Size( 0, 0 );
 			foreach ( var c in infos )
 			{
-				maxSize.Width  = Math.Max( maxSize.Width, c.Width );
-				maxSize.Height = Math.Max( maxSize.Height, c.Height );
+				maxSize.Width  = Math.Max( maxSize.Width, c.PackedWidth );
+				maxSize.Height = Math.Max( maxSize.Height, c.PackedHeight );
 			}
 
 			int maxImageDimension = 1024;
 
 			// Now, pack all the characters in the output.
 			// First, sort by height.
-			CharacterInfo[] sorted = infos.OrderBy( x => -x.Height ).ToArray();
+			CharacterInfo[] sorted = infos.OrderBy( x => -x.PackedHeight ).ToArray();
+			_finalCharacterSet = sorted;
+
+			// Now we can write the final index of each character.
+			for ( int i=0; i < _finalCharacterSet.Length; i++ )
+				_finalCharacterSet[i].SudoFontIndex = i;
+
 			int packedWidth = 16;
 			int packedHeight = 0;
 			while ( packedWidth < maxImageDimension )
@@ -238,8 +243,6 @@ namespace SudoFont
 			// Now render the final bitmap.
 			_packedImage = new Bitmap( packedWidth, NextPowerOfTwo( packedHeight ) );
 			RenderPackedImage( _packedImage, infos, _alphaOnlyControl.Checked );
-
-			_finalCharacterSet = sorted;
 		}
 
 		static void RenderPackedImage( Bitmap bitmap, CharacterInfo[] infos, bool alphaOnly )
@@ -255,7 +258,7 @@ namespace SudoFont
 			BitmapData bm = bitmap.LockBits( new Rectangle( 0, 0, bitmap.Width, bitmap.Height ), ImageLockMode.WriteOnly, bitmap.PixelFormat );
 			
 			foreach ( CharacterInfo c in infos )
-				CopyImageData( c.Image, c.Width, c.Height, bm, c.PackedX, c.PackedY, alphaOnly );
+				CopyImageData( c.Image, c.PackedWidth, c.PackedHeight, bm, c.PackedX, c.PackedY, alphaOnly );
 
 			bitmap.UnlockBits( bm );
 		}
@@ -309,19 +312,19 @@ namespace SudoFont
 					break;
 
 				// Figure out how many characters we can fit horizontally on this line.
-				int lineWidth = infos[ firstChar ].Width;
+				int lineWidth = infos[ firstChar ].PackedWidth;
 				int lastChar;
 				for ( lastChar=firstChar+1; lastChar < infos.Length; lastChar++ )
 				{
 					if ( lastChar != firstChar )
 					{
-						if ( ( lineWidth + extraPadX + infos[lastChar].Width ) > width )
+						if ( ( lineWidth + extraPadX + infos[lastChar].PackedWidth ) > width )
 							break;
 
 						lineWidth += extraPadX;
 					}
 					
-					lineWidth += infos[lastChar].Width;
+					lineWidth += infos[lastChar].PackedWidth;
 				}
 
 				int numCharsInLine = lastChar - firstChar;
@@ -329,7 +332,7 @@ namespace SudoFont
 				// Figure out the height of the line.
 				int maxHeight = 0;
 				for ( int i=0; i < numCharsInLine; i++ )
-					maxHeight = Math.Max( maxHeight, infos[ firstChar + i ].Height );
+					maxHeight = Math.Max( maxHeight, infos[ firstChar + i ].PackedHeight );
 
 				// Now just add each character in there.
 				int curX = 0;
@@ -337,7 +340,7 @@ namespace SudoFont
 				{
 					infos[ firstChar + i ].PackedX = curX;
 					infos[ firstChar + i ].PackedY = curY;
-					curX += infos[ firstChar + i ].Width + extraPadX;
+					curX += infos[ firstChar + i ].PackedWidth + extraPadX;
 				}
 
 				firstChar += numCharsInLine;
@@ -490,6 +493,11 @@ namespace SudoFont
 			Rectangle outlineRect = new Rectangle( pt.X, pt.Y, _packedImage.Width, _packedImage.Height );
 			outlineRect.Inflate( 2, 2 );
 			g.DrawRectangle( new Pen( Color.Gray ), outlineRect );
+
+			// _testBitmap can be set to draw test stuff on the display.
+			// Remember to invalidate _outputPreview if you set it!
+			if ( _testBitmap != null )
+				g.DrawImage( _testBitmap, new Point( 5,5 ) );
 		}
 
 		private void _fontsList_SelectedIndexChanged( object sender, EventArgs e )
@@ -556,7 +564,7 @@ namespace SudoFont
 		void ResetCharacterSet()
 		{
 			string characterSetText = "";
-			for ( int i=32; i <= 127; i++ )
+			for ( int i=32; i < 127; i++ )
 			{
 				characterSetText += ( (Char)i ).ToString();
 			}
@@ -727,6 +735,16 @@ namespace SudoFont
 				return;
 			}
 
+			// Calculate kernings. This is expensive.
+			List< CharacterKerningInfo > kernings = new List<CharacterKerningInfo>();
+			using ( Graphics g = CreateGraphics() )
+			{
+				for ( int i=0; i < _finalCharacterSet.Length; i++ )
+				{
+					CalculateSpacingInfo( g, _finalCharacterSet[i], kernings );
+				}
+			}
+
 			// Save out the .sfn file.
 			using ( Stream outStream = File.Open( _prevFontFilename, FileMode.Create, FileAccess.Write ) )
 			{
@@ -736,7 +754,7 @@ namespace SudoFont
 
 					WriteFontInfoSection( writer );
 					WriteFontCharactersSection( writer );
-					WriteFontKerningSection( writer );
+					WriteFontKerningSection( writer, kernings );
 					WriteFontConfigSection( writer );
 
 					writer.Write( SudoFont.FontFile_Section_Finished );
@@ -745,6 +763,30 @@ namespace SudoFont
 			
 			// Save out the corresponding PNG file.
 			_packedImage.Save( Path.ChangeExtension( _prevFontFilename, "png" ) );
+			
+			// Useful for verifying the saving, loading, and rendering/spacing.
+			//SetTestBitmap( SudoFontTest.CreateBitmapFromString( _prevFontFilename, "Test. String, sdf3#$@%!rtfgbvbnbn", 0, 0, _currentFont ) );
+		}
+
+		void SetTestBitmap( Bitmap bitmap )
+		{
+			_testBitmap = bitmap;
+			_outputPreview.Invalidate();
+		}
+
+		// Return the RectangleF for each character in the string.
+		static RectangleF[] MeasureAllCharacterRanges( Graphics g, string str, Font font )
+		{
+			StringFormat testFormat = new StringFormat();
+
+			CharacterRange[] ranges = new CharacterRange[ str.Length ];
+			for ( int i=0; i < str.Length; i++ )
+				ranges[i] = new CharacterRange( i, 1 );
+
+			testFormat.SetMeasurableCharacterRanges( ranges );
+			Region[] regions = g.MeasureCharacterRanges( str, font, new Rectangle( 0, 0, 1000, 1000 ), testFormat );
+			RectangleF[] rects = regions.Select( x => x.GetBounds(g) ).ToArray();
+			return rects;
 		}
 
 		void WriteFontInfoSection( BinaryWriter writer )
@@ -760,22 +802,81 @@ namespace SudoFont
 			}
 		}
 
+		// This is how we calculate XAdvance and find kerning. Normally, we'd use GetCharABCWidths and GetKerningPairs,
+		// but we weren't able to get the spacing to match Graphics.DrawString properly using that data.
+		//
+		// This method is inefficient, but it's highly accurate because it deduces the correct spacing information 
+		// directly from GraphicsMeasureCharacterRanges.
+		//
+		// It also happens to generate a lot less kerning pairs than GetKerningPairs does (even after reducing down to
+		// our limited character set here).
+		void CalculateSpacingInfo( Graphics g, CharacterInfo c, List< CharacterKerningInfo > kernings )
+		{
+			int[] distances = new int[ _finalCharacterSet.Length ];
+			int minDist = int.MaxValue;
+			int maxDist = int.MinValue;
+
+			int averageDist = 0;
+			for ( int i=0; i < _finalCharacterSet.Length; i++ )
+			{
+				// We pad with spaces on the sides because this returns different spacing numbers for characters on the edges of the string. Go figure..
+				RectangleF[] rects = MeasureAllCharacterRanges( g, " " + c.Character.ToString() + _finalCharacterSet[i].Character + " ", _currentFont );
+				int dist = (int)( rects[2].X - rects[1].X );
+				minDist = Math.Min( dist, minDist );
+				maxDist = Math.Max( dist, maxDist );
+				
+				distances[i] = dist;
+				averageDist += dist;
+			}
+
+			// By setting XAdvance to the (rounded) average distance to the other characters, we're intending to 
+			// reduce the # of kerning pairs necessary. This tends to work well, usually returning 1 kerning pair 
+			// for most characters (that have kerning at all) in a font.
+			averageDist = (int)( (float)averageDist / _finalCharacterSet.Length + 0.5f );
+			c.XAdvance = averageDist;
+
+			if ( minDist != maxDist )
+			{
+				CharacterKerningInfo info = new CharacterKerningInfo();
+				info.Character = c;
+				info.Kernings = new List<CharacterKerningInfo.KerningPair>();
+				for ( int i=0; i < distances.Length; i++ )
+				{
+					if ( distances[i] != c.XAdvance )
+					{
+						info.Kernings.Add(
+							new CharacterKerningInfo.KerningPair()
+							{
+								SecondCharacter = _finalCharacterSet[i],
+								KernAmount = distances[i] - c.XAdvance
+							}
+						);
+					}
+				}
+
+				kernings.Add( info );
+			}
+		}
+
+
 		void WriteFontCharactersSection( BinaryWriter writer )
 		{
 			using ( SectionWriter sectionWriter = new SectionWriter( writer, SudoFont.FontFile_Section_Characters ) )
 			{
 				// Write the # of characters.
-				writer.Write( _finalCharacterSet.Length );
+				writer.Write( (short)_finalCharacterSet.Length );
 
 				for ( int i=0; i < _finalCharacterSet.Length; i++ )
 				{
 					CharacterInfo c = _finalCharacterSet[i];
 
+					writer.Write( (short)c.Character );
+
 					// Write its location in the packed image.
 					writer.Write( (short)c.PackedX );
 					writer.Write( (short)c.PackedY );
-					writer.Write( (short)c.Width );
-					writer.Write( (short)c.Height );
+					writer.Write( (short)c.PackedWidth );
+					writer.Write( (short)c.PackedHeight );
 
 					// Write its placement offset (i.e. if you were to print this packed letter at (0,0), how offsetted would it be?)
 					writer.Write( (short)c.XOffset );
@@ -787,37 +888,29 @@ namespace SudoFont
 			}
 		}
 
-		void WriteFontKerningSection( BinaryWriter writer )
+		void WriteFontKerningSection( BinaryWriter writer, List< CharacterKerningInfo > kernings )
 		{
 			using ( SectionWriter sectionWriter = new SectionWriter( writer, SudoFont.FontFile_Section_Kerning ) )
 			{
 				using ( Graphics g = CreateGraphics() )
 				{
 					FontServices.KerningPair[] kerningPairs = FontServices.GetKerningPairsForFont( _currentFont, g );
-			
+
 					// First, figure out how many characters have kerning.
-					List< CharacterKerningInfo > charactersWithKerning = new List<CharacterKerningInfo>();
-
-					for ( int i=0; i < _finalCharacterSet.Length; i++ )
-					{
-						CharacterInfo c = _finalCharacterSet[i];
-
-						CharacterKerningInfo info = new CharacterKerningInfo( c, kerningPairs, _finalCharacterSet );
-						if ( info.Kernings.Count > 0 )
-							charactersWithKerning.Add( info );
-					}
-
 					// Write the # of characters that have kerning.
-					writer.Write( (Int16)charactersWithKerning.Count );
+					writer.Write( (Int16)kernings.Count );
 
 					// For each one, write its kerning list.
-					foreach ( CharacterKerningInfo info in charactersWithKerning )
+					foreach ( CharacterKerningInfo info in kernings )
 					{
-						writer.Write( (Int16)info.Kernings.Count );
+						// Write which character this is.
+						writer.Write( (Int16)info.Character.SudoFontIndex );
 
+						// Write its list of kernings.
+						writer.Write( (Int16)info.Kernings.Count );
 						for ( int i=0; i < info.Kernings.Count; i++ )
 						{
-							writer.Write( (Int16)info.Kernings[i].SecondCharacter.Character );
+							writer.Write( (Int16)info.Kernings[i].SecondCharacter.SudoFontIndex );
 							writer.Write( (Int16)info.Kernings[i].KernAmount );
 						}
 					}
@@ -888,8 +981,8 @@ namespace SudoFont
 			// If you print the character into a Graphics at (0,0), this will be where the actual nonzero data is.
 			public int XOffset;
 			public int YOffset;
-			public int Width;
-			public int Height;
+			public int PackedWidth;
+			public int PackedHeight;
 
 			// Where this character is in the packed texture.
 			public int PackedX;
@@ -902,6 +995,10 @@ namespace SudoFont
 			// This is the original image data after Graphics.DrawString.
 			// Dimensions are Width x Height.
 			public UInt32[] Image;
+
+			// This is the index into the font's character array.
+			// This is not written to the font file.
+			public int SudoFontIndex;
 		}
 
 		// We have one instance of this (in _fontStyleControls) for each bold/italic/strikeout/underline control.
@@ -950,8 +1047,18 @@ namespace SudoFont
 		}
 
 		// We use this to figure out the kerning for a single CharacterInfo, based on the Win32 KerningPairs.
+		[ DebuggerDisplay( "Char: {Character.Character}, Count: {Kernings.Count}" ) ]
 		class CharacterKerningInfo
 		{
+			public CharacterKerningInfo()
+			{
+			}
+
+			//
+			// NOTE: This is currently unused. This would seem to be the right way to do it,
+			//       but the results that we get back don't match what you get if you call Graphics.DrawString.
+			//       Instead, see CalculateSpacingInfo.
+			//
 			public CharacterKerningInfo( CharacterInfo character, FontServices.KerningPair[] kerningPairs, CharacterInfo[] validCharacters )
 			{
 				this.Character = character;
@@ -987,6 +1094,7 @@ namespace SudoFont
 				return null;
 			}
 
+			[ DebuggerDisplay( "SecondChar: {SecondCharacter.Character}, KernAmount: {KernAmount}" ) ]
 			public struct KerningPair
 			{
 				public CharacterInfo SecondCharacter;
@@ -1017,5 +1125,9 @@ namespace SudoFont
 
 		Font _currentFont;
 		InstalledFontCollection _allFonts;
+
+		// Used for testing. If you set this, it'll render the bitmap into _outputPreview.
+		// Use SetTestBitmap to set this so it'll invalidate _outputPreview!
+		Bitmap _testBitmap;
 	}
 }
