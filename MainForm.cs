@@ -732,12 +732,14 @@ namespace SudoFont
 			{
 				using ( BinaryWriter writer = new BinaryWriter( outStream ) )
 				{
-					writer.Write( FontFileHeader );
+					writer.Write( SudoFont.FontFileHeader );
 
 					WriteFontInfoSection( writer );
 					WriteFontCharactersSection( writer );
 					WriteFontKerningSection( writer );
 					WriteFontConfigSection( writer );
+
+					writer.Write( SudoFont.FontFile_Section_Finished );
 				}
 			}
 			
@@ -747,7 +749,7 @@ namespace SudoFont
 
 		void WriteFontInfoSection( BinaryWriter writer )
 		{
-			using ( SectionWriter sectionWriter = new SectionWriter( writer, FontFile_Section_FontInfo ) )
+			using ( SectionWriter sectionWriter = new SectionWriter( writer, SudoFont.FontFile_Section_FontInfo ) )
 			{
 				using ( Graphics g = CreateGraphics() )
 				{
@@ -760,7 +762,7 @@ namespace SudoFont
 
 		void WriteFontCharactersSection( BinaryWriter writer )
 		{
-			using ( SectionWriter sectionWriter = new SectionWriter( writer, FontFile_Section_Characters ) )
+			using ( SectionWriter sectionWriter = new SectionWriter( writer, SudoFont.FontFile_Section_Characters ) )
 			{
 				// Write the # of characters.
 				writer.Write( _finalCharacterSet.Length );
@@ -787,7 +789,7 @@ namespace SudoFont
 
 		void WriteFontKerningSection( BinaryWriter writer )
 		{
-			using ( SectionWriter sectionWriter = new SectionWriter( writer, FontFile_Section_Kerning ) )
+			using ( SectionWriter sectionWriter = new SectionWriter( writer, SudoFont.FontFile_Section_Kerning ) )
 			{
 				using ( Graphics g = CreateGraphics() )
 				{
@@ -842,7 +844,7 @@ namespace SudoFont
 			}
 
 			// Now write it to the section.
-			using ( SectionWriter sectionWriter = new SectionWriter( writer, FontFile_Section_Config ) )
+			using ( SectionWriter sectionWriter = new SectionWriter( writer, SudoFont.FontFile_Section_Config ) )
 			{
 				writer.Write( bytes );
 			}
@@ -995,13 +997,6 @@ namespace SudoFont
 			public List< KerningPair > Kernings = new List<KerningPair>();
 		}
 
-
-		// Font file keys.
-		static readonly string FontFileHeader = "SudoFont1.0";
-		static readonly short FontFile_Section_FontInfo = 0;		// This is a bunch of info like font height, name, etc.
-		static readonly short FontFile_Section_Characters = 1;
-		static readonly short FontFile_Section_Kerning = 2;
-		static readonly short FontFile_Section_Config = 3;			// This is the configuration for SudoFont.
 
 		// Config file keys.
 		static readonly string ConfigFilenameHeader = "SudoFont Font Configuration File v1.0";
