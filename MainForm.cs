@@ -152,26 +152,6 @@ namespace SudoFont
 				return string.Format( "{0}k", numBytes / 1024 );
 		}
 
-		[DebuggerDisplay( "Char: {Character}, {Width} x {Height}, Packed: ({PackedX}, {PackedY})" )]
-		class CharacterInfo
-		{
-			public Char Character;
-			
-			// If you print the character into a Graphics at (0,0), this will be where the actual nonzero data is.
-			public int XOffset;
-			public int YOffset;
-			public int Width;
-			public int Height;
-
-			// Where this character is in the packed texture.
-			public int PackedX;
-			public int PackedY;
-			
-			// This is the original image data after Graphics.DrawString.
-			// Dimensions are Width x Height.
-			public UInt32[] Image;
-		}
-
 		void BuildPackedImage()
 		{
 			_packedImage = null;
@@ -200,6 +180,7 @@ namespace SudoFont
 						infos[i] = c;
 
 						c.Character = characterSet[i];
+						c.XAdvance = FontServices.GetCharWidthABC( c.Character, _currentFont, g ).Total;
 
 						// Draw this character into tempBitmap.
 						g.DrawString( c.Character.ToString(), _currentFont, whiteBrush, new Point( 0, 0 ) );
@@ -257,6 +238,8 @@ namespace SudoFont
 			// Now render the final bitmap.
 			_packedImage = new Bitmap( packedWidth, NextPowerOfTwo( packedHeight ) );
 			RenderPackedImage( _packedImage, infos, _alphaOnlyControl.Checked );
+
+			_finalCharacterSet = sorted;
 		}
 
 		static void RenderPackedImage( Bitmap bitmap, CharacterInfo[] infos, bool alphaOnly )
@@ -672,7 +655,6 @@ namespace SudoFont
 				}
 			}
 
-			_prevConfigFilename = filename;
 			return true;
 		}
 
@@ -699,19 +681,22 @@ namespace SudoFont
 			{
 				using ( StreamWriter writer = new StreamWriter( dlg.FileName ) )
 				{
-					writer.WriteLine( ConfigFilenameHeader );
-					WriteOption( writer, ConfigFileKey_FontFamily, CurrentSelectedFontFamilyName );
-					WriteOption( writer, ConfigFileKey_FontSize, CurrentComboBoxFontSize );
-
-					foreach ( var ctl in _fontStyleControls )
-						WriteOption( writer, ctl.ConfigFileKey, ctl.Control.Checked );
-
-					WriteOption( writer, ConfigFileKey_AlphaOnly, _alphaOnlyControl.Checked );
-					WriteOption( writer, ConfigFileKey_EmbedConfigInFontFile, _embedConfigurationOption.Checked );
+					ExportConfiguration( writer );
 				}
-
-				_prevConfigFilename = dlg.FileName;
 			}
+		}
+
+		void ExportConfiguration( StreamWriter writer )
+		{
+			writer.WriteLine( ConfigFilenameHeader );
+			WriteOption( writer, ConfigFileKey_FontFamily, CurrentSelectedFontFamilyName );
+			WriteOption( writer, ConfigFileKey_FontSize, CurrentComboBoxFontSize );
+
+			foreach ( var ctl in _fontStyleControls )
+				WriteOption( writer, ctl.ConfigFileKey, ctl.Control.Checked );
+
+			WriteOption( writer, ConfigFileKey_AlphaOnly, _alphaOnlyControl.Checked );
+			WriteOption( writer, ConfigFileKey_EmbedConfigInFontFile, _embedConfigurationOption.Checked );
 		}
 
 		void WriteOption( StreamWriter writer, string optionName, string value )
@@ -736,6 +721,145 @@ namespace SudoFont
 
 		void FontFile_Save()
 		{
+			if ( _prevFontFilename == null )
+			{
+				FontFile_SaveAs();
+				return;
+			}
+
+			// Save out the .sfn file.
+			using ( Stream outStream = File.Open( _prevFontFilename, FileMode.Create, FileAccess.Write ) )
+			{
+				using ( BinaryWriter writer = new BinaryWriter( outStream ) )
+				{
+					writer.Write( FontFileHeader );
+
+					WriteFontInfoSection( writer );
+					WriteFontCharactersSection( writer );
+					WriteFontKerningSection( writer );
+					WriteFontConfigSection( writer );
+				}
+			}
+			
+			// Save out the corresponding PNG file.
+			_packedImage.Save( Path.ChangeExtension( _prevFontFilename, "png" ) );
+		}
+
+		void WriteFontInfoSection( BinaryWriter writer )
+		{
+			using ( SectionWriter sectionWriter = new SectionWriter( writer, FontFile_Section_FontInfo ) )
+			{
+				using ( Graphics g = CreateGraphics() )
+				{
+					FontServices.TEXTMETRIC textMetric = FontServices.GetTextMetrics( g, _currentFont );
+
+					writer.Write( (short)_currentFont.Height ); // Font height.
+				}
+			}
+		}
+
+		void WriteFontCharactersSection( BinaryWriter writer )
+		{
+			using ( SectionWriter sectionWriter = new SectionWriter( writer, FontFile_Section_Characters ) )
+			{
+				// Write the # of characters.
+				writer.Write( _finalCharacterSet.Length );
+
+				for ( int i=0; i < _finalCharacterSet.Length; i++ )
+				{
+					CharacterInfo c = _finalCharacterSet[i];
+
+					// Write its location in the packed image.
+					writer.Write( (short)c.PackedX );
+					writer.Write( (short)c.PackedY );
+					writer.Write( (short)c.Width );
+					writer.Write( (short)c.Height );
+
+					// Write its placement offset (i.e. if you were to print this packed letter at (0,0), how offsetted would it be?)
+					writer.Write( (short)c.XOffset );
+					writer.Write( (short)c.YOffset );
+
+					// How far we advance X to get to the next character.
+					writer.Write( (short)c.XAdvance );
+				}
+			}
+		}
+
+		void WriteFontKerningSection( BinaryWriter writer )
+		{
+			using ( SectionWriter sectionWriter = new SectionWriter( writer, FontFile_Section_Kerning ) )
+			{
+				using ( Graphics g = CreateGraphics() )
+				{
+					FontServices.KerningPair[] kerningPairs = FontServices.GetKerningPairsForFont( _currentFont, g );
+			
+					// First, figure out how many characters have kerning.
+					List< CharacterKerningInfo > charactersWithKerning = new List<CharacterKerningInfo>();
+
+					for ( int i=0; i < _finalCharacterSet.Length; i++ )
+					{
+						CharacterInfo c = _finalCharacterSet[i];
+
+						CharacterKerningInfo info = new CharacterKerningInfo( c, kerningPairs, _finalCharacterSet );
+						if ( info.Kernings.Count > 0 )
+							charactersWithKerning.Add( info );
+					}
+
+					// Write the # of characters that have kerning.
+					writer.Write( (Int16)charactersWithKerning.Count );
+
+					// For each one, write its kerning list.
+					foreach ( CharacterKerningInfo info in charactersWithKerning )
+					{
+						writer.Write( (Int16)info.Kernings.Count );
+
+						for ( int i=0; i < info.Kernings.Count; i++ )
+						{
+							writer.Write( (Int16)info.Kernings[i].SecondCharacter.Character );
+							writer.Write( (Int16)info.Kernings[i].KernAmount );
+						}
+					}
+				}
+			}
+		}
+
+		void WriteFontConfigSection( BinaryWriter writer )
+		{
+			byte[] bytes;
+
+			// First, write the configuration into a MemoryStream, then into our byte[] array.
+			using ( MemoryStream memStream = new MemoryStream() )
+			{
+				using ( StreamWriter memStreamWriter = new StreamWriter( memStream ) )
+				{
+					ExportConfiguration( memStreamWriter );
+					memStreamWriter.Flush();
+
+					memStream.Position = 0;
+					bytes = new byte[ memStream.Length ];
+					memStream.Read( bytes, 0, bytes.Length );
+				}
+			}
+
+			// Now write it to the section.
+			using ( SectionWriter sectionWriter = new SectionWriter( writer, FontFile_Section_Config ) )
+			{
+				writer.Write( bytes );
+			}
+		}
+		
+
+		int CountKerningsWithFirstChar( FontServices.KerningPair[] kerningPairs, Char ch )
+		{
+			int total = 0;
+			
+			for ( int i=0; i < kerningPairs.Length; i++ )
+			{
+				if ( kerningPairs[i].wFirst == (Int16)ch )
+					++total;
+			}
+
+			return total;
 		}
 
 		void FontFile_SaveAs()
@@ -748,23 +872,37 @@ namespace SudoFont
 
 			if ( dlg.ShowDialog() == DialogResult.OK )
 			{
-				_prevConfigFilename = dlg.FileName;
+				_prevFontFilename = dlg.FileName;
 				FontFile_Save();
 			}
 		}
 
+		// This is our main data about each character in the _packedImage font.
+		[DebuggerDisplay( "Char: {Character}, {Width} x {Height}, Packed: ({PackedX}, {PackedY})" )]
+		class CharacterInfo
+		{
+			public Char Character;
+			
+			// If you print the character into a Graphics at (0,0), this will be where the actual nonzero data is.
+			public int XOffset;
+			public int YOffset;
+			public int Width;
+			public int Height;
 
-		static readonly string ConfigFilenameHeader = "SudoFont Font Configuration File v1.0";
-		static readonly string ConfigFileKey_FontFamily = "FontFamily";
-		static readonly string ConfigFileKey_FontSize = "FontSize";
-		static readonly string ConfigFileKey_AlphaOnly = "IsAlphaOnly";
-		static readonly string ConfigFileKey_EmbedConfigInFontFile = "EmbedConfigInFontFile";
+			// Where this character is in the packed texture.
+			public int PackedX;
+			public int PackedY;
 
-		string _prevFontFilename = null;
-		string _prevConfigFilename = null;
+			// How far to advance on X when printing this char.
+			// The total amount to advance for each char is (XAdvance + Font.SpacingHorz + Kerning( thisChar, nextChar )).
+			public int XAdvance;
+			
+			// This is the original image data after Graphics.DrawString.
+			// Dimensions are Width x Height.
+			public UInt32[] Image;
+		}
 
-		string _previewText = "0123456789 _*+- ()[]#@\nABCDEFGHIJKLMNOPQRSTUVWXYZ\nabcdefghijklmnopqrstuvwxyz";
-
+		// We have one instance of this (in _fontStyleControls) for each bold/italic/strikeout/underline control.
 		struct FontStyleControl
 		{
 			public CheckBox Control;
@@ -772,8 +910,115 @@ namespace SudoFont
 			public string ConfigFileKey;
 		}
 
+		// This makes it easy to write a section with a length at the beginning.
+		// When you dispose of it, it'll go back and write the length in.
+		// A section looks like:
+		//		[int16] section_ID
+		//		[int32] section_length
+		//		(section_length's worth of data)
+		class SectionWriter : IDisposable
+		{
+			public SectionWriter( BinaryWriter writer, short sectionID )
+			{
+				_writer = writer;
+
+				_writer.Write( sectionID );
+				_writer.Flush();
+
+				_sectionStartPosition = _writer.BaseStream.Position;
+				_writer.Write( (int)0 );	// Write a placeholder for section length.
+				_writer = writer;
+			}
+
+			public void Dispose()
+			{
+				_writer.Flush();
+				
+				long numSectionBytes = _writer.BaseStream.Position - _sectionStartPosition - sizeof( int );
+				Debug.Assert( numSectionBytes > 0 );
+
+				_writer.BaseStream.Position = _sectionStartPosition;
+				_writer.Write( (int)numSectionBytes );
+				_writer.Flush();
+				_writer.BaseStream.Position += numSectionBytes;
+			}
+
+			BinaryWriter _writer;
+			long _sectionStartPosition;
+		}
+
+		// We use this to figure out the kerning for a single CharacterInfo, based on the Win32 KerningPairs.
+		class CharacterKerningInfo
+		{
+			public CharacterKerningInfo( CharacterInfo character, FontServices.KerningPair[] kerningPairs, CharacterInfo[] validCharacters )
+			{
+				this.Character = character;
+
+				// Add a kerning pair for anything that we're the first character in (and has a valid second character).
+				for ( int i=0; i < kerningPairs.Length; i++ )
+				{
+					if ( kerningPairs[i].wFirst == (short)this.Character.Character )
+					{
+						CharacterInfo second = FindCharacter( (Char)kerningPairs[i].wSecond, validCharacters );	// Find the second kerning character in validCharacters.
+						if ( second != null )
+						{
+							KerningPair pair = new KerningPair()
+							{
+								SecondCharacter = second,
+								KernAmount = kerningPairs[i].iKernAmount
+							};
+
+							this.Kernings.Add( pair );
+						}
+					}
+				}
+			}
+
+			CharacterInfo FindCharacter( Char ch, CharacterInfo[] validCharacters )
+			{
+				foreach ( var c in validCharacters )
+				{
+					if ( c.Character == ch )
+						return c;
+				}
+				
+				return null;
+			}
+
+			public struct KerningPair
+			{
+				public CharacterInfo SecondCharacter;
+				public int KernAmount;
+			}
+
+			public CharacterInfo Character;
+			public List< KerningPair > Kernings = new List<KerningPair>();
+		}
+
+
+		// Font file keys.
+		static readonly string FontFileHeader = "SudoFont1.0";
+		static readonly short FontFile_Section_FontInfo = 0;		// This is a bunch of info like font height, name, etc.
+		static readonly short FontFile_Section_Characters = 1;
+		static readonly short FontFile_Section_Kerning = 2;
+		static readonly short FontFile_Section_Config = 3;			// This is the configuration for SudoFont.
+
+		// Config file keys.
+		static readonly string ConfigFilenameHeader = "SudoFont Font Configuration File v1.0";
+		static readonly string ConfigFileKey_FontFamily = "FontFamily";
+		static readonly string ConfigFileKey_FontSize = "FontSize";
+		static readonly string ConfigFileKey_AlphaOnly = "IsAlphaOnly";
+		static readonly string ConfigFileKey_EmbedConfigInFontFile = "EmbedConfigInFontFile";
+
+		string _prevFontFilename = null;
+
+		string _previewText = "0123456789 _*+- ()[]#@\nABCDEFGHIJKLMNOPQRSTUVWXYZ\nabcdefghijklmnopqrstuvwxyz";
+
 		FontStyleControl[] _fontStyleControls;
 		Bitmap _packedImage;
+
+		// This is what's baked into the current packedImage texture.
+		CharacterInfo[] _finalCharacterSet;
 
 		Font _currentFont;
 		InstalledFontCollection _allFonts;
