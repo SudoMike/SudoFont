@@ -59,8 +59,29 @@ namespace SudoFont
 
 			return textMetric; 
 		}
+		
+		public static FontToHDCBinder BindFontToHDC( Graphics g, Font font )
+		{
+			return new FontToHDCBinder( g, font );
+		}
 
-		public static KerningPair[] GetKerningPairsForFont( Font font, Graphics graphics )
+		public static void TextOut( Graphics graphics, Font font, Color color, int x, int y, string str )
+		{
+			using ( FontToHDCBinder binder = FontServices.BindFontToHDC( graphics, font ) )
+			{
+				UInt32 prevColor = GetTextColor( binder.HDC );
+				SetTextColor( binder.HDC, ToColorRef( color ) );
+
+				int prevBkMode = SetBkMode( binder.HDC, TRANSPARENT );
+
+				TextOut( binder.HDC, x, y, str, str.Length );
+
+				SetBkMode( binder.HDC, prevBkMode );
+				SetTextColor( binder.HDC, prevColor );
+			}
+		}
+
+		public static KerningPair[] GetKerningPairs( Font font, Graphics graphics )
 		{
 			// Select the HFONT into the HDC.
 			IntPtr hDC = graphics.GetHdc();
@@ -81,6 +102,43 @@ namespace SudoFont
 			return kerningPairs;
 		}
 
+		// Convert a Color to a COLORREF.
+		public static UInt32 ToColorRef( Color clr )
+		{
+			return ((UInt32)clr.R << 0) | ((UInt32)clr.G << 8) | ((UInt32)clr.B << 16);
+		}
+
+		// Simplifies binding a font to an HDC for use with native Win32 functions.
+		public class FontToHDCBinder : IDisposable
+		{
+			public FontToHDCBinder( Graphics g, Font font )
+			{
+				_graphics = g;
+				_hDC = g.GetHdc();
+				_hFont = font.ToHfont();
+				_hPrevFont = FontServices.SelectObject( _hDC, _hFont );
+			}
+
+			public IntPtr HDC
+			{
+				get { return _hDC; }
+			}
+
+			public void Dispose()
+			{
+				FontServices.DeleteObject( _hFont );
+				_graphics.ReleaseHdc( _hDC );
+
+				_hFont = _hDC = IntPtr.Zero;
+			}
+
+			Graphics _graphics;
+			IntPtr _hDC;
+			IntPtr _hFont;
+			IntPtr _hPrevFont;
+		}
+
+	
 		[StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
 		public struct TEXTMETRIC
 		{
@@ -125,6 +183,22 @@ namespace SudoFont
 
 		[DllImport("Gdi32.dll", CharSet=CharSet.Unicode)] 
 		static extern bool DeleteObject(IntPtr hdc); 
+
+		[DllImport("Gdi32.dll", CharSet=CharSet.Unicode)] 
+		static extern System.UInt32 GetTextColor( IntPtr hdc ); 
+
+		[DllImport("Gdi32.dll", CharSet=CharSet.Unicode)] 
+		static extern UInt32 SetTextColor( IntPtr hdc, UInt32 color ); 
+
+		[DllImport("gdi32.dll", CharSet = CharSet.Auto)]
+		static extern bool TextOut(IntPtr hdc, int nXStart, int nYStart, string lpString, int cbString);
+
+		[DllImport("gdi32.dll")]
+		static extern int SetBkMode(IntPtr hdc, int iBkMode);
+
+		// Constants for SetBkMode
+		const int TRANSPARENT = 1;
+		const int OPAQUE = 2;	
 
 		//
 		// Internal support calls..

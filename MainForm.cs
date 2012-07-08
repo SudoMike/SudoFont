@@ -765,7 +765,7 @@ namespace SudoFont
 			_packedImage.Save( Path.ChangeExtension( _prevFontFilename, "png" ) );
 			
 			// Useful for verifying the saving, loading, and rendering/spacing.
-			//SetTestBitmap( SudoFontTest.CreateBitmapFromString( _prevFontFilename, "Test. String, sdf3#$@%!rtfgbvbnbn", 0, 0, _currentFont ) );
+			//SetTestBitmap( SudoFontTest.CreateBitmapFromString( _prevFontFilename, "This is a test string. !@#$%^&*", 0, 0, _currentFont, win32APITest: true ) );
 		}
 
 		void SetTestBitmap( Bitmap bitmap )
@@ -894,7 +894,7 @@ namespace SudoFont
 			{
 				using ( Graphics g = CreateGraphics() )
 				{
-					FontServices.KerningPair[] kerningPairs = FontServices.GetKerningPairsForFont( _currentFont, g );
+					FontServices.KerningPair[] kerningPairs = FontServices.GetKerningPairs( _currentFont, g );
 
 					// First, figure out how many characters have kerning.
 					// Write the # of characters that have kerning.
