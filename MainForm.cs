@@ -619,7 +619,7 @@ namespace SudoFont
 		private void saveMenuItem_Click( object sender, EventArgs e )
 		{
 			if ( _prevFontFilename == null )
-				FontFile_SaveAs();
+				FontFile_SaveAs( ( _currentFont.Name + "-" + this.CurrentComboBoxFontSize.ToString() ).Replace( " ", "-" ) );
 			else
 				FontFile_Save();
 		}
@@ -791,7 +791,7 @@ namespace SudoFont
 			}
 			
 			// Save out the corresponding PNG file.
-			_packedImage.Save( Path.ChangeExtension( _prevFontFilename, "png" ) );
+			_packedImage.Save( Path.ChangeExtension( _prevFontFilename, null ) + "-texture.png" );
 			
 			// Useful for verifying the saving, loading, and rendering/spacing.
 			//SetTestBitmap( SudoFontTest.CreateBitmapFromString( _prevFontFilename, "This is a test string. !@#$%^&*", 0, 0, _currentFont, win32APITest: true ) );
@@ -986,13 +986,14 @@ namespace SudoFont
 			return total;
 		}
 
-		void FontFile_SaveAs()
+		void FontFile_SaveAs( string defaultName=null )
 		{
 			// Find out how they want to save the font file.
 			SaveFileDialog dlg = new SaveFileDialog();
 			dlg.InitialDirectory = Environment.CurrentDirectory;
 			dlg.Filter = "Font Files (*.sfn)|*.sfn|All Files (*.*)|*.*";
 			dlg.FilterIndex = 0;
+			dlg.FileName = defaultName;
 
 			if ( dlg.ShowDialog() == DialogResult.OK )
 			{

@@ -270,6 +270,25 @@ namespace SudoFont
 			public int YOffset;
 		}
 
+		public static int MeasureStringWidth( SudoFont font, string str )
+		{
+			int width = 0;
+			for ( int i=0; i < str.Length; i++ )
+			{
+				Char ch = str[i];
+				int ic = font.FindCharacter( ch );
+				if ( ic != -1 )
+				{
+					width += font.Characters[ic].XAdvance;
+					
+					if ( i < str.Length-1 )
+						width += font.Characters[ic].GetKerning( str[i+1] );
+				}
+			}
+
+			return width;
+		}
+
 		public static CharacterLayout[] LayoutCharacters( SudoFont font, string str, int startX, int startY )
 		{
 			CharacterLayout[] layout = new CharacterLayout[ str.Length ];
