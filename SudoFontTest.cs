@@ -22,7 +22,7 @@ namespace SudoFont
 				using ( BinaryReader reader = new BinaryReader( File.OpenRead( fontFilename ) ) )
 				{
 					// Load the font.
-					SudoFont font = new SudoFont();
+					RuntimeFont font = new RuntimeFont();
 					if ( !font.Load( reader ) )
 						return null;
 
@@ -30,7 +30,7 @@ namespace SudoFont
 					Bitmap pngBitmap = new Bitmap( Path.ChangeExtension( fontFilename, "png" ) );
 
 					// Get the character positions.
-					SudoFontLayout.CharacterLayout[] layouts = SudoFontLayout.LayoutCharacters( font, testString, 0, 0 );
+					FontLayout.CharacterLayout[] layouts = FontLayout.LayoutCharacters( font, testString, 0, 0 );
 
 					// Draw the character.
 					int extraLineSpacing = 5;
@@ -52,7 +52,7 @@ namespace SudoFont
 					{
 						g.Clear( Color.Black );
 
-						foreach ( SudoFontLayout.CharacterLayout layout in layouts )
+						foreach ( FontLayout.CharacterLayout layout in layouts )
 						{
 							int sfi = layout.SudoFontIndex;
 							Rectangle srcRect = new Rectangle( font.Characters[sfi].PackedX, font.Characters[sfi].PackedY, font.Characters[sfi].PackedWidth, font.Characters[sfi].PackedHeight );

@@ -598,7 +598,7 @@ namespace SudoFont
 				try
 				{
 					// First, load the SudoFont.
-					SudoFont loadedFont = new SudoFont();
+					RuntimeFont loadedFont = new RuntimeFont();
 					using ( Stream stream = File.OpenRead( dlg.FileName ) )
 					{
 						if ( !loadedFont.Load( new BinaryReader( stream ), keepConfigBlock: true ) )
@@ -787,14 +787,14 @@ namespace SudoFont
 			{
 				using ( BinaryWriter writer = new BinaryWriter( outStream ) )
 				{
-					writer.Write( SudoFont.FontFileHeader );
+					writer.Write( RuntimeFont.FontFileHeader );
 
 					WriteFontInfoSection( writer );
 					WriteFontCharactersSection( writer );
 					WriteFontKerningSection( writer, kernings );
 					WriteFontConfigSection( writer );
 
-					writer.Write( SudoFont.FontFile_Section_Finished );
+					writer.Write( RuntimeFont.FontFile_Section_Finished );
 				}
 			}
 			
@@ -828,7 +828,7 @@ namespace SudoFont
 
 		void WriteFontInfoSection( BinaryWriter writer )
 		{
-			using ( SectionWriter sectionWriter = new SectionWriter( writer, SudoFont.FontFile_Section_FontInfo ) )
+			using ( SectionWriter sectionWriter = new SectionWriter( writer, RuntimeFont.FontFile_Section_FontInfo ) )
 			{
 				using ( Graphics g = CreateGraphics() )
 				{
@@ -898,7 +898,7 @@ namespace SudoFont
 
 		void WriteFontCharactersSection( BinaryWriter writer )
 		{
-			using ( SectionWriter sectionWriter = new SectionWriter( writer, SudoFont.FontFile_Section_Characters ) )
+			using ( SectionWriter sectionWriter = new SectionWriter( writer, RuntimeFont.FontFile_Section_Characters ) )
 			{
 				// Write the # of characters.
 				writer.Write( (short)_finalCharacterSet.Length );
@@ -927,7 +927,7 @@ namespace SudoFont
 
 		void WriteFontKerningSection( BinaryWriter writer, List< CharacterKerningInfo > kernings )
 		{
-			using ( SectionWriter sectionWriter = new SectionWriter( writer, SudoFont.FontFile_Section_Kerning ) )
+			using ( SectionWriter sectionWriter = new SectionWriter( writer, RuntimeFont.FontFile_Section_Kerning ) )
 			{
 				using ( Graphics g = CreateGraphics() )
 				{
@@ -974,7 +974,7 @@ namespace SudoFont
 			}
 
 			// Now write it to the section.
-			using ( SectionWriter sectionWriter = new SectionWriter( writer, SudoFont.FontFile_Section_Config ) )
+			using ( SectionWriter sectionWriter = new SectionWriter( writer, RuntimeFont.FontFile_Section_Config ) )
 			{
 				writer.Write( bytes );
 			}

@@ -9,7 +9,7 @@ namespace SudoFont
 {
 	// You can use this to load a binary font file at runtime.
 	// This serves as a specification for the binary file.
-	public class SudoFont
+	public class RuntimeFont
 	{
 		// If keepConfigBlock is true, we'll save the whole block in a MemoryStream
 		// that you can access with SudoFont.ConfigurationBlockStream.
@@ -109,7 +109,7 @@ namespace SudoFont
 				// Doh, we must do a full search.
 				for ( int i=0; i < this.Characters.Length; i++ )
 				{
-					if ( this.Characters[i].Char == ch )
+					if ( this.Characters[i].CharacterCode == ch )
 						return i;
 				}
 
@@ -127,7 +127,7 @@ namespace SudoFont
 
 			for ( int i=0; i < this.Characters.Length; i++ )
 			{
-				int charCode = (int)this.Characters[i].Char;
+				int charCode = (int)this.Characters[i].CharacterCode;
 				if ( charCode >= CharactersLookupTable_FirstASCIIValue && charCode <= CharactersLookupTable_LastASCIIValue )
 					_charactersLookupTable[ charCode - CharactersLookupTable_FirstASCIIValue ] = (short)i;
 			}
@@ -145,7 +145,7 @@ namespace SudoFont
 
 			for ( int i=0; i < this.Characters.Length; i++ )
 			{
-				this.Characters[i].Char = (Char)file.ReadInt16();
+				this.Characters[i].CharacterCode = (Char)file.ReadInt16();
 
 				this.Characters[i].PackedX = file.ReadInt16();
 				this.Characters[i].PackedY = file.ReadInt16();
@@ -211,7 +211,8 @@ namespace SudoFont
 				return 0;
 			}
 
-			public Char Char;
+			// Which character this Character references.
+			public Char CharacterCode;
 			
 			// Location of this character in the packed image.
 			public short PackedX;
@@ -260,7 +261,7 @@ namespace SudoFont
 
 
 	// This is a reference class to show how the letters should be spaced.
-	public class SudoFontLayout
+	public class FontLayout
 	{
 		[ DebuggerDisplay( "Offset: ({XOffset}, {YOffset}), Index: {SudoFontIndex}" ) ]
 		public struct CharacterLayout
@@ -270,7 +271,7 @@ namespace SudoFont
 			public int YOffset;
 		}
 
-		public static int MeasureStringWidth( SudoFont font, string str )
+		public static int MeasureStringWidth( RuntimeFont font, string str )
 		{
 			int width = 0;
 			for ( int i=0; i < str.Length; i++ )
@@ -289,7 +290,7 @@ namespace SudoFont
 			return width;
 		}
 
-		public static CharacterLayout[] LayoutCharacters( SudoFont font, string str, int startX, int startY )
+		public static CharacterLayout[] LayoutCharacters( RuntimeFont font, string str, int startX, int startY )
 		{
 			CharacterLayout[] layout = new CharacterLayout[ str.Length ];
 
