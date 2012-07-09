@@ -584,19 +584,22 @@ namespace SudoFont
 
 		private void openMenuItem_Click( object sender, EventArgs e )
 		{
-			OpenFileDialog ofd = new OpenFileDialog();
+			OpenFileDialog dlg = new OpenFileDialog();
 
-			ofd.InitialDirectory = Environment.CurrentDirectory;
-			ofd.Filter = "Font Files (*.sfn)|*.sfn|All files (*.*)|*.*" ;
-			ofd.FilterIndex = 0;
+			dlg.InitialDirectory = Environment.CurrentDirectory;
+			dlg.Filter = "Font Files (*.sfn)|*.sfn|All files (*.*)|*.*" ;
+			dlg.FilterIndex = 0;
+			dlg.InitialDirectory = _dialogsInitialDirectory;
 
-			if ( ofd.ShowDialog() == DialogResult.OK )
+			if ( dlg.ShowDialog() == DialogResult.OK )
 			{
+				_dialogsInitialDirectory = Path.GetDirectoryName( dlg.FileName );
+
 				try
 				{
 					// First, load the SudoFont.
 					SudoFont loadedFont = new SudoFont();
-					using ( Stream stream = File.OpenRead( ofd.FileName ) )
+					using ( Stream stream = File.OpenRead( dlg.FileName ) )
 					{
 						if ( !loadedFont.Load( new BinaryReader( stream ), keepConfigBlock: true ) )
 							MessageBox.Show( "Invalid font" );
@@ -604,7 +607,7 @@ namespace SudoFont
 						// Then read the configuration out of it.
 						MemoryStream configBlock = loadedFont.ConfigurationBlockStream;
 						if ( ReadConfigurationFromStream( configBlock ) )
-							_prevFontFilename = ofd.FileName;
+							_prevFontFilename = dlg.FileName;
 						else
 							MessageBox.Show( "Unable to read configuration block" );
 					}
@@ -619,14 +622,14 @@ namespace SudoFont
 		private void saveMenuItem_Click( object sender, EventArgs e )
 		{
 			if ( _prevFontFilename == null )
-				FontFile_SaveAs( ( _currentFont.Name + "-" + this.CurrentComboBoxFontSize.ToString() ).Replace( " ", "-" ) );
+				saveAsMenuItem_Click( sender, e );	// Treat it as a Save-As
 			else
 				FontFile_Save();
 		}
 
 		private void saveAsMenuItem_Click( object sender, EventArgs e )
 		{
-			FontFile_SaveAs();
+			FontFile_SaveAs( ( _currentFont.Name + "-" + this.CurrentComboBoxFontSize.ToString() ).Replace( " ", "-" ) );
 		}
 
 		private void importConfigurationMenuItem_Click( object sender, EventArgs e )
@@ -635,9 +638,11 @@ namespace SudoFont
 			dlg.InitialDirectory = Environment.CurrentDirectory;
 			dlg.Filter = "Config Files (*.sfc)|*.sfc|All Files (*.*)|*.*";
 			dlg.FilterIndex = 0;
+			dlg.InitialDirectory = _dialogsInitialDirectory;
 
 			if ( dlg.ShowDialog() == DialogResult.OK )
 			{
+				_dialogsInitialDirectory = Path.GetDirectoryName( dlg.FileName );
 				ImportConfiguration( dlg.FileName );
 			}
 		}
@@ -713,9 +718,12 @@ namespace SudoFont
 			dlg.InitialDirectory = Environment.CurrentDirectory;
 			dlg.Filter = "Config Files (*.sfc)|*.sfc|All Files (*.*)|*.*";
 			dlg.FilterIndex = 0;
+			dlg.InitialDirectory = _dialogsInitialDirectory;
 
 			if ( dlg.ShowDialog() == DialogResult.OK )
 			{
+				_dialogsInitialDirectory = Path.GetDirectoryName( dlg.FileName );
+
 				using ( StreamWriter writer = new StreamWriter( dlg.FileName ) )
 				{
 					ExportConfiguration( writer );
@@ -994,10 +1002,13 @@ namespace SudoFont
 			dlg.Filter = "Font Files (*.sfn)|*.sfn|All Files (*.*)|*.*";
 			dlg.FilterIndex = 0;
 			dlg.FileName = defaultName;
+			dlg.InitialDirectory = _dialogsInitialDirectory;
 
 			if ( dlg.ShowDialog() == DialogResult.OK )
 			{
+				_dialogsInitialDirectory = Path.GetDirectoryName( dlg.FileName );
 				_prevFontFilename = dlg.FileName;
+
 				FontFile_Save();
 			}
 		}
@@ -1155,6 +1166,9 @@ namespace SudoFont
 
 		Font _currentFont;
 		InstalledFontCollection _allFonts;
+
+		// This preserves the same directory that we'll create open and save dialogs at.
+		string _dialogsInitialDirectory;
 
 		// Used for testing. If you set this, it'll render the bitmap into _outputPreview.
 		// Use SetTestBitmap to set this so it'll invalidate _outputPreview!
