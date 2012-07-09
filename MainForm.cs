@@ -587,11 +587,32 @@ namespace SudoFont
 			OpenFileDialog ofd = new OpenFileDialog();
 
 			ofd.InitialDirectory = Environment.CurrentDirectory;
-			ofd.Filter = "Configuration Files (*.sfc)|*.sfc|Font Files (*.sf)|*.sf|All files (*.*)|*.*" ;
+			ofd.Filter = "Font Files (*.sfn)|*.sfn|All files (*.*)|*.*" ;
 			ofd.FilterIndex = 0;
 
 			if ( ofd.ShowDialog() == DialogResult.OK )
 			{
+				try
+				{
+					// First, load the SudoFont.
+					SudoFont loadedFont = new SudoFont();
+					using ( Stream stream = File.OpenRead( ofd.FileName ) )
+					{
+						if ( !loadedFont.Load( new BinaryReader( stream ), keepConfigBlock: true ) )
+							MessageBox.Show( "Invalid font" );
+
+						// Then read the configuration out of it.
+						MemoryStream configBlock = loadedFont.ConfigurationBlockStream;
+						if ( ReadConfigurationFromStream( configBlock ) )
+							_prevFontFilename = ofd.FileName;
+						else
+							MessageBox.Show( "Unable to read configuration block" );
+					}
+				}
+				catch ( Exception )
+				{
+					MessageBox.Show( "Error loading font" );
+				}
 			}
 		}
 
@@ -621,9 +642,9 @@ namespace SudoFont
 			}
 		}
 
-		bool ImportConfiguration( string filename )
+		bool ReadConfigurationFromStream( Stream stream )
 		{
-			using ( StreamReader reader = new StreamReader( filename ) )
+			using ( StreamReader reader = new StreamReader( stream ) )
 			{
 				if ( reader.ReadLine() != ConfigFilenameHeader )
 					return OnLoadError( "Missing header" );
@@ -664,6 +685,14 @@ namespace SudoFont
 			}
 
 			return true;
+		}
+
+		bool ImportConfiguration( string filename )
+		{
+			using ( Stream stream = File.OpenRead( filename ) )
+			{
+				return ReadConfigurationFromStream( stream );
+			}
 		}
 
 		string GetOption( Dictionary< string, string > options, string key )

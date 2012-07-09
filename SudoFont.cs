@@ -11,7 +11,9 @@ namespace SudoFont
 	// This serves as a specification for the binary file.
 	public class SudoFont
 	{
-		public bool Load( BinaryReader file )
+		// If keepConfigBlock is true, we'll save the whole block in a MemoryStream
+		// that you can access with SudoFont.ConfigurationBlockStream.
+		public bool Load( BinaryReader file, bool keepConfigBlock=false )
 		{
 			try
 			{
@@ -64,7 +66,19 @@ namespace SudoFont
 					else if ( sectionID == FontFile_Section_Config )
 					{
 						// Configuration for the SudoFont program.
-						file.BaseStream.Seek( sectionLength, SeekOrigin.Current );
+						if ( keepConfigBlock )
+						{
+							byte[] bytes = new byte[ sectionLength ];
+							file.Read( bytes, 0, sectionLength );
+
+							_configurationBlockStream = new MemoryStream();
+							_configurationBlockStream.Write( bytes, 0, bytes.Length );
+							_configurationBlockStream.Position = 0;
+						}
+						else
+						{
+							file.BaseStream.Seek( sectionLength, SeekOrigin.Current );
+						}
 					}
 				}
 
@@ -75,6 +89,11 @@ namespace SudoFont
 			{
 				return false;
 			}
+		}
+
+		public MemoryStream ConfigurationBlockStream
+		{
+			get { return _configurationBlockStream; }
 		}
 
 		// Returns -1 if the character isn't found.
@@ -234,6 +253,9 @@ namespace SudoFont
 		// All the characters in this font.
 		public Character[] Characters;
 		public int LineHeight;
+
+		// Only valid if keepConfigBlock is true in Load.
+		MemoryStream _configurationBlockStream;
 	}
 
 
