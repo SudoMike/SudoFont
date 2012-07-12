@@ -27,7 +27,7 @@ namespace SudoFont
 						return null;
 
 					// Load the associated PNG file.
-					Bitmap pngBitmap = new Bitmap( Path.ChangeExtension( fontFilename, "png" ) );
+					Bitmap pngBitmap = new Bitmap( Path.ChangeExtension( fontFilename, null ) + "-texture.png" );
 
 					// Get the character positions.
 					FontLayout.CharacterLayout[] layouts = FontLayout.LayoutCharacters( font, testString, 0, 0 );
