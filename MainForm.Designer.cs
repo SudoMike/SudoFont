@@ -35,6 +35,7 @@
 			System.Windows.Forms.Label label4;
 			System.Windows.Forms.GroupBox groupBox3;
 			System.Windows.Forms.Button embedHelp;
+			System.Windows.Forms.Label label3;
 			this._strikeoutOption = new System.Windows.Forms.CheckBox();
 			this._underlineOption = new System.Windows.Forms.CheckBox();
 			this._italicOption = new System.Windows.Forms.CheckBox();
@@ -59,6 +60,7 @@
 			this.toolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
 			this.exitToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
 			this._embedConfigurationOption = new System.Windows.Forms.CheckBox();
+			this._hintCombo = new System.Windows.Forms.ComboBox();
 			_sizeLabel = new System.Windows.Forms.Label();
 			label1 = new System.Windows.Forms.Label();
 			label2 = new System.Windows.Forms.Label();
@@ -66,6 +68,7 @@
 			label4 = new System.Windows.Forms.Label();
 			groupBox3 = new System.Windows.Forms.GroupBox();
 			embedHelp = new System.Windows.Forms.Button();
+			label3 = new System.Windows.Forms.Label();
 			groupBox1.SuspendLayout();
 			groupBox3.SuspendLayout();
 			this.groupBox2.SuspendLayout();
@@ -102,6 +105,8 @@
 			// 
 			// groupBox1
 			// 
+			groupBox1.Controls.Add(label3);
+			groupBox1.Controls.Add(this._hintCombo);
 			groupBox1.Controls.Add(this._strikeoutOption);
 			groupBox1.Controls.Add(this._underlineOption);
 			groupBox1.Controls.Add(this._italicOption);
@@ -380,6 +385,25 @@
 			this._embedConfigurationOption.Text = "Embed Configuration in Font File";
 			this._embedConfigurationOption.UseVisualStyleBackColor = true;
 			// 
+			// _hintCombo
+			// 
+			this._hintCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+			this._hintCombo.FormattingEnabled = true;
+			this._hintCombo.Location = new System.Drawing.Point(13, 197);
+			this._hintCombo.Name = "_hintCombo";
+			this._hintCombo.Size = new System.Drawing.Size(151, 21);
+			this._hintCombo.TabIndex = 7;
+			this._hintCombo.SelectedIndexChanged += new System.EventHandler(this.hintCombo_SelectedIndexChanged);
+			// 
+			// label3
+			// 
+			label3.AutoSize = true;
+			label3.Location = new System.Drawing.Point(10, 181);
+			label3.Name = "label3";
+			label3.Size = new System.Drawing.Size(102, 13);
+			label3.TabIndex = 11;
+			label3.Text = "Text Rendering Hint";
+			// 
 			// MainForm
 			// 
 			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -432,6 +456,7 @@
 		private System.Windows.Forms.ToolStripSeparator toolStripSeparator1;
 		private System.Windows.Forms.ToolStripMenuItem loadConfigurationToolStripMenuItem;
 		private System.Windows.Forms.ToolStripSeparator toolStripSeparator2;
+		private System.Windows.Forms.ComboBox _hintCombo;
 	}
 }
 

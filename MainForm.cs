@@ -59,6 +59,14 @@ namespace SudoFont
 
 			_fontsList.SelectedItem = "Arial";
 			_sizeCombo.SelectedItem = 12;
+
+			_hintCombo.Items.Add( "ClearTypeGridFit" );
+			_hintCombo.Items.Add( "SystemDefault" );
+			_hintCombo.Items.Add( "SingleBitPerPixelGridFit" );
+			_hintCombo.Items.Add( "SingleBitPerPixel" );
+			_hintCombo.Items.Add( "AntiAliasGridFit" );
+			_hintCombo.Items.Add( "AntiAlias" );
+			_hintCombo.SelectedIndex = 0;
 			
 			Recalculate();
 		}
@@ -152,6 +160,23 @@ namespace SudoFont
 				return string.Format( "{0}k", numBytes / 1024 );
 		}
 
+		void SetTextRenderingHint( Graphics g )
+		{
+			string val = _hintCombo.Text;
+			if ( val == "SystemDefault" )
+				g.TextRenderingHint = TextRenderingHint.SystemDefault;
+			else if ( val == "SingleBitPerPixelGridFit" )
+				g.TextRenderingHint = TextRenderingHint.SingleBitPerPixelGridFit;
+			else if ( val == "SingleBitPerPixel" )
+				g.TextRenderingHint = TextRenderingHint.SingleBitPerPixel;
+			else if ( val == "AntiAliasGridFit" )
+				g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
+			else if ( val == "AntiAlias" )
+				g.TextRenderingHint = TextRenderingHint.AntiAlias;
+			else
+				g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
+		}
+
 		void BuildPackedImage()
 		{
 			_packedImage = null;
@@ -170,6 +195,8 @@ namespace SudoFont
 			{
 				using ( Graphics g = Graphics.FromImage( tempBitmap ) )
 				{
+					SetTextRenderingHint( g );
+
 					// Initialize it to black to start.
 					g.Clear( Color.Black );
 
@@ -464,6 +491,7 @@ namespace SudoFont
 				return;
 
 			Graphics g = e.Graphics;
+			SetTextRenderingHint( g );
 
 			int curY = 0;
 			foreach ( string line in _previewText.Split( new [] { '\n' } ) )
@@ -832,9 +860,25 @@ namespace SudoFont
 			{
 				using ( Graphics g = CreateGraphics() )
 				{
-					FontServices.TEXTMETRIC textMetric = FontServices.GetTextMetrics( g, _currentFont );
+					float heightInPixels;
 
-					writer.Write( (short)_currentFont.Height ); // Font height.
+					if ( _currentFont.Unit == GraphicsUnit.Point )
+					{
+						float heightInPoints = _currentFont.GetHeight();
+						float heightInInches = heightInPoints / 72.0f;
+						heightInPixels = heightInInches * g.DpiY;
+						writer.Write( (short)heightInPixels ); // Font height.
+					}
+					else if ( _currentFont.Unit == GraphicsUnit.Pixel )
+					{
+						heightInPixels = _currentFont.GetHeight();
+						writer.Write( (short)heightInPixels ); // Font height.
+					}
+					else
+					{
+						Debug.Assert( false );
+						writer.Write( (short)5 ); // Font height.
+					}
 				}
 			}
 		}
@@ -1011,6 +1055,11 @@ namespace SudoFont
 
 				FontFile_Save();
 			}
+		}
+		
+		private void hintCombo_SelectedIndexChanged( object sender, EventArgs e )
+		{
+			Recalculate();
 		}
 
 		// This is our main data about each character in the _packedImage font.
