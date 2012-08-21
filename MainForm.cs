@@ -166,7 +166,27 @@ namespace SudoFont
 				_outputImageSizeLabel.Text = "( error )";
 			}
 
+			// Rebuild the font preview 
+			BuildFontPreviewBitmap();
 			_fontPreview.Invalidate();
+		}
+
+		// Update _fontPreviewBitmap
+		void BuildFontPreviewBitmap()
+		{
+			// Save the font.
+			Stream stream = new MemoryStream();
+			BinaryWriter writer = new BinaryWriter( stream );
+			WriteFontFileDataToStream( writer );
+			stream.Position = 0;
+
+			// Load in the RuntimeFont.
+			BinaryReader reader = new BinaryReader( stream );
+			RuntimeFont runtimeFont = new RuntimeFont();
+			runtimeFont.Load( reader );
+
+			// Draw the lines..
+			_fontPreviewBitmap = SudoFontTest.CreateBitmapFromString( runtimeFont, _packedImage, "Preview text built with RuntimeFont...", 0, 0 );
 		}
 
 		string FormatSizeString( int numBytes )
@@ -541,6 +561,10 @@ namespace SudoFont
 			if ( _currentFont == null )
 				return;
 
+			if ( _fontPreviewBitmap != null )
+				e.Graphics.DrawImage( _fontPreviewBitmap, new Point( 0, 0 ) );
+
+			/*
 			Graphics g = e.Graphics;
 			SetTextRenderingHint( g );
 
@@ -549,7 +573,7 @@ namespace SudoFont
 			{
 				g.DrawString( line, _currentFont, new SolidBrush( Color.White ), new Point( 0, curY ) );
 				curY += _currentFont.Height;
-			}
+			}*/
 		}
 
 		private void _outputPreview_Paint( object sender, PaintEventArgs e )
@@ -875,6 +899,24 @@ namespace SudoFont
 				return;
 			}
 
+			// Save out the .sfn file.
+			using ( Stream outStream = File.Open( _prevFontFilename, FileMode.Create, FileAccess.Write ) )
+			{
+				using ( BinaryWriter writer = new BinaryWriter( outStream ) )
+				{
+					WriteFontFileDataToStream( writer );
+				}
+			}
+			
+			// Save out the corresponding PNG file.
+			_packedImage.Save( Path.ChangeExtension( _prevFontFilename, null ) + "-texture.png" );
+			
+			// Useful for verifying the saving, loading, and rendering/spacing.
+			//SetTestBitmap( SudoFontTest.CreateBitmapFromString( _prevFontFilename, "This is a test string. !@#$%^&*", 0, 0, _currentFont, win32APITest: true ) );
+		}
+
+		void WriteFontFileDataToStream( BinaryWriter writer )
+		{
 			// Calculate kernings. This is expensive.
 			List< CharacterKerningInfo > kernings = new List<CharacterKerningInfo>();
 			using ( Graphics g = CreateGraphics() )
@@ -885,27 +927,14 @@ namespace SudoFont
 				}
 			}
 
-			// Save out the .sfn file.
-			using ( Stream outStream = File.Open( _prevFontFilename, FileMode.Create, FileAccess.Write ) )
-			{
-				using ( BinaryWriter writer = new BinaryWriter( outStream ) )
-				{
-					writer.Write( RuntimeFont.FontFileHeader );
+			writer.Write( RuntimeFont.FontFileHeader );
 
-					WriteFontInfoSection( writer );
-					WriteFontCharactersSection( writer );
-					WriteFontKerningSection( writer, kernings );
-					WriteFontConfigSection( writer );
+			WriteFontInfoSection( writer );
+			WriteFontCharactersSection( writer );
+			WriteFontKerningSection( writer, kernings );
+			WriteFontConfigSection( writer );
 
-					writer.Write( RuntimeFont.FontFile_Section_Finished );
-				}
-			}
-			
-			// Save out the corresponding PNG file.
-			_packedImage.Save( Path.ChangeExtension( _prevFontFilename, null ) + "-texture.png" );
-			
-			// Useful for verifying the saving, loading, and rendering/spacing.
-			//SetTestBitmap( SudoFontTest.CreateBitmapFromString( _prevFontFilename, "This is a test string. !@#$%^&*", 0, 0, _currentFont, win32APITest: true ) );
+			writer.Write( RuntimeFont.FontFile_Section_Finished );
 		}
 
 		void SetTestBitmap( Bitmap bitmap )
@@ -1334,6 +1363,9 @@ namespace SudoFont
 
 		// This preserves the same directory that we'll create open and save dialogs at.
 		string _dialogsInitialDirectory;
+
+		// This is drawn into the preview window.
+		Bitmap _fontPreviewBitmap;
 
 		// Used for testing. If you set this, it'll render the bitmap into _outputPreview.
 		// Use SetTestBitmap to set this so it'll invalidate _outputPreview!
