@@ -68,6 +68,7 @@ namespace SudoFont
 			_hintCombo.Items.Add( "AntiAlias" );
 			_hintCombo.SelectedIndex = 0;
 			
+			UpdateColorDisplays();
 			Recalculate();
 		}
 
@@ -104,6 +105,22 @@ namespace SudoFont
 			}
 		}
 
+		FontStyle GetFontStyleForFamily( FontFamily family )
+		{
+			FontStyle style = 0;
+
+			if ( family.IsStyleAvailable( FontStyle.Regular ) )
+				style = FontStyle.Regular;
+
+			foreach ( var ctl in _fontStyleControls )
+			{
+				if ( ctl.Control.Checked && family.IsStyleAvailable( style & ctl.Style ) )
+					style |= ctl.Style;
+			}
+
+			return style;
+		}
+
 		void Recalculate()
 		{
 			if ( _fontsList.SelectedItem == null || _sizeCombo.Text == "" )
@@ -114,7 +131,7 @@ namespace SudoFont
 			FontFamily family = new FontFamily( fontFamily );
 
 			// Setup the FontStyle.
-			FontStyle style = 0;
+			FontStyle style = GetFontStyleForFamily( family );
 
 			if ( family.IsStyleAvailable( FontStyle.Regular ) )
 				style = FontStyle.Regular;
@@ -272,7 +289,7 @@ namespace SudoFont
 			RenderPackedImage( _packedImage, infos, _alphaOnlyControl.Checked );
 		}
 
-		static void RenderPackedImage( Bitmap bitmap, CharacterInfo[] infos, bool alphaOnly )
+		void RenderPackedImage( Bitmap bitmap, CharacterInfo[] infos, bool alphaOnly )
 		{
 			using ( Graphics g = Graphics.FromImage( bitmap ) )
 			{
@@ -285,19 +302,38 @@ namespace SudoFont
 			BitmapData bm = bitmap.LockBits( new Rectangle( 0, 0, bitmap.Width, bitmap.Height ), ImageLockMode.WriteOnly, bitmap.PixelFormat );
 			
 			foreach ( CharacterInfo c in infos )
-				CopyImageData( c.Image, c.PackedWidth, c.PackedHeight, bm, c.PackedX, c.PackedY, alphaOnly );
+				CopyImageData( c.Image, c.PackedWidth, c.PackedHeight, bm, c.PackedX, c.PackedY, alphaOnly, c.YOffset );
 
 			bitmap.UnlockBits( bm );
 		}
 
-		static void CopyImageData( uint[] imageData, int imageWidth, int imageHeight, BitmapData dest, int destX, int destY, bool alphaOnly )
+		void CopyImageData( uint[] imageData, int imageWidth, int imageHeight, BitmapData dest, int destX, int destY, bool alphaOnly, int shadingYOffset )
 		{
 			unsafe
 			{
+				FontStyle style = GetFontStyleForFamily( _currentFont.FontFamily );
+				int bottomPos = (int)( ( (float)_currentFont.FontFamily.GetCellAscent( style ) / _currentFont.FontFamily.GetEmHeight( style ) ) * _currentFont.Size );
 				uint *pDestBase = (uint*)dest.Scan0;
 
 				for ( int y=0; y < imageHeight; y++ )
 				{
+					// Figure out shading.
+					int shadingY = y + shadingYOffset;
+					int shadingR, shadingG, shadingB;
+					
+					if ( shadingY >= bottomPos )
+					{
+						shadingR = _bottomColor.R;
+						shadingG = _bottomColor.G;
+						shadingB = _bottomColor.B;
+					}
+					else
+					{
+						shadingR = _topColor.R + ( ( _bottomColor.R - _topColor.R ) * shadingY ) / bottomPos;
+						shadingG = _topColor.G + ( ( _bottomColor.G - _topColor.G ) * shadingY ) / bottomPos;
+						shadingB = _topColor.B + ( ( _bottomColor.B - _topColor.B ) * shadingY ) / bottomPos;
+					}
+
 					int outY = destY + y;
 					if ( outY < 0 || outY > dest.Height )
 						continue;
@@ -318,6 +354,21 @@ namespace SudoFont
 							uint b = ( color >>  0 ) & 0xFF;
 							uint alpha = ( r + g + b ) / 3;
 							color = 0xFFFFFF | ( alpha << 24 );
+						}
+
+						// Shading...
+						if ( true )
+						{
+							uint sr = ( color >> 16 ) & 0xFF;
+							uint sg = ( color >>  8 ) & 0xFF;
+							uint sb = ( color >>  0 ) & 0xFF;
+							uint sa = ( color & 0xFF000000 );
+
+							sr = (uint)( ( (uint)sr * shadingR ) >> 8 );
+							sg = (uint)( ( (uint)sg * shadingG ) >> 8 );
+							sb = (uint)( ( (uint)sb * shadingB ) >> 8 );
+
+							color = ( sr << 16 ) | ( sg << 8 ) | ( sb ) | sa;
 						}
 
 						pDestBase[ outY * ( dest.Stride >> 2 ) + outX ] = color;
@@ -638,6 +689,9 @@ namespace SudoFont
 							_prevFontFilename = dlg.FileName;
 						else
 							MessageBox.Show( "Unable to read configuration block" );
+
+						UpdateColorDisplays();
+						Recalculate();
 					}
 				}
 				catch ( Exception )
@@ -702,6 +756,19 @@ namespace SudoFont
 
 				try
 				{
+					// Read top and bottom colors.
+					int topR = 255, topG = 255, topB = 255;
+					if ( options.ContainsKey( ConfigFileKey_TopColorR ) ) topR = Convert.ToInt32( options[ ConfigFileKey_TopColorR ] );
+					if ( options.ContainsKey( ConfigFileKey_TopColorG ) ) topG = Convert.ToInt32( options[ ConfigFileKey_TopColorG ] );
+					if ( options.ContainsKey( ConfigFileKey_TopColorB ) ) topB = Convert.ToInt32( options[ ConfigFileKey_TopColorB ] );
+					_topColor = Color.FromArgb( topR, topG, topB );
+
+					int bottomR = 255, bottomG = 255, bottomB = 255;
+					if ( options.ContainsKey( ConfigFileKey_BottomColorR ) ) bottomR = Convert.ToInt32( options[ ConfigFileKey_BottomColorR ] );
+					if ( options.ContainsKey( ConfigFileKey_BottomColorG ) ) bottomG = Convert.ToInt32( options[ ConfigFileKey_BottomColorG ] );
+					if ( options.ContainsKey( ConfigFileKey_BottomColorB ) ) bottomB = Convert.ToInt32( options[ ConfigFileKey_BottomColorB ] );
+					_bottomColor = Color.FromArgb( bottomR, bottomG, bottomB );
+
 					CurrentSelectedFontFamilyName = GetOption( options, ConfigFileKey_FontFamily );
 					CurrentComboBoxFontSize = Convert.ToInt32( GetOption( options, ConfigFileKey_FontSize ) );
 
@@ -770,6 +837,14 @@ namespace SudoFont
 
 			WriteOption( writer, ConfigFileKey_AlphaOnly, _alphaOnlyControl.Checked );
 			WriteOption( writer, ConfigFileKey_EmbedConfigInFontFile, _embedConfigurationOption.Checked );
+			
+			WriteOption( writer, ConfigFileKey_TopColorR, _topColor.R );
+			WriteOption( writer, ConfigFileKey_TopColorG, _topColor.G );
+			WriteOption( writer, ConfigFileKey_TopColorB, _topColor.B );
+
+			WriteOption( writer, ConfigFileKey_BottomColorR, _bottomColor.R );
+			WriteOption( writer, ConfigFileKey_BottomColorG, _bottomColor.G );
+			WriteOption( writer, ConfigFileKey_BottomColorB, _bottomColor.B );
 		}
 
 		void WriteOption( StreamWriter writer, string optionName, string value )
@@ -1196,12 +1271,53 @@ namespace SudoFont
 		}
 
 
+		private void _topColorDisplay_Click( object sender, EventArgs e )
+		{
+			ColorDialog dlg = new ColorDialog();
+			dlg.Color = _topColor;
+
+			if ( dlg.ShowDialog() == System.Windows.Forms.DialogResult.OK )
+			{
+				_topColor = dlg.Color;
+				UpdateColorDisplays();
+				Recalculate();
+			}
+		}
+
+		private void _bottomColorDisplay_Click( object sender, EventArgs e )
+		{
+			ColorDialog dlg = new ColorDialog();
+			dlg.Color = _bottomColor;
+
+			if ( dlg.ShowDialog() == System.Windows.Forms.DialogResult.OK )
+			{
+				_bottomColor = dlg.Color;
+				UpdateColorDisplays();
+				Recalculate();
+			}
+		}
+
+		void UpdateColorDisplays()
+		{
+			_topColorDisplay.BackColor = _topColor;
+			_bottomColorDisplay.BackColor = _bottomColor;
+		}
+
+	
 		// Config file keys.
 		static readonly string ConfigFilenameHeader = "SudoFont Font Configuration File v1.0";
 		static readonly string ConfigFileKey_FontFamily = "FontFamily";
 		static readonly string ConfigFileKey_FontSize = "FontSize";
 		static readonly string ConfigFileKey_AlphaOnly = "IsAlphaOnly";
 		static readonly string ConfigFileKey_EmbedConfigInFontFile = "EmbedConfigInFontFile";
+
+		static readonly string ConfigFileKey_TopColorR = "TopR";
+		static readonly string ConfigFileKey_TopColorG = "TopG";
+		static readonly string ConfigFileKey_TopColorB = "TopB";
+
+		static readonly string ConfigFileKey_BottomColorR = "BtmR";
+		static readonly string ConfigFileKey_BottomColorG = "BtmG";
+		static readonly string ConfigFileKey_BottomColorB = "BtmB";
 
 		string _prevFontFilename = null;
 
@@ -1222,5 +1338,8 @@ namespace SudoFont
 		// Used for testing. If you set this, it'll render the bitmap into _outputPreview.
 		// Use SetTestBitmap to set this so it'll invalidate _outputPreview!
 		Bitmap _testBitmap;
+
+		Color _topColor = Color.White;
+		Color _bottomColor = Color.White;
 	}
 }

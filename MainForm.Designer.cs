@@ -32,10 +32,14 @@
 			System.Windows.Forms.Label label1;
 			System.Windows.Forms.Label label2;
 			System.Windows.Forms.GroupBox groupBox1;
+			System.Windows.Forms.Label label3;
 			System.Windows.Forms.Label label4;
 			System.Windows.Forms.GroupBox groupBox3;
 			System.Windows.Forms.Button embedHelp;
-			System.Windows.Forms.Label label3;
+			System.Windows.Forms.Label label6;
+			this._hintCombo = new System.Windows.Forms.ComboBox();
+			this._bottomColorDisplay = new System.Windows.Forms.Panel();
+			this._topColorDisplay = new System.Windows.Forms.Panel();
 			this._strikeoutOption = new System.Windows.Forms.CheckBox();
 			this._underlineOption = new System.Windows.Forms.CheckBox();
 			this._italicOption = new System.Windows.Forms.CheckBox();
@@ -60,15 +64,15 @@
 			this.toolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
 			this.exitToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
 			this._embedConfigurationOption = new System.Windows.Forms.CheckBox();
-			this._hintCombo = new System.Windows.Forms.ComboBox();
 			_sizeLabel = new System.Windows.Forms.Label();
 			label1 = new System.Windows.Forms.Label();
 			label2 = new System.Windows.Forms.Label();
 			groupBox1 = new System.Windows.Forms.GroupBox();
+			label3 = new System.Windows.Forms.Label();
 			label4 = new System.Windows.Forms.Label();
 			groupBox3 = new System.Windows.Forms.GroupBox();
 			embedHelp = new System.Windows.Forms.Button();
-			label3 = new System.Windows.Forms.Label();
+			label6 = new System.Windows.Forms.Label();
 			groupBox1.SuspendLayout();
 			groupBox3.SuspendLayout();
 			this.groupBox2.SuspendLayout();
@@ -105,8 +109,11 @@
 			// 
 			// groupBox1
 			// 
-			groupBox1.Controls.Add(label3);
+			groupBox1.Controls.Add(label6);
 			groupBox1.Controls.Add(this._hintCombo);
+			groupBox1.Controls.Add(this._bottomColorDisplay);
+			groupBox1.Controls.Add(label3);
+			groupBox1.Controls.Add(this._topColorDisplay);
 			groupBox1.Controls.Add(this._strikeoutOption);
 			groupBox1.Controls.Add(this._underlineOption);
 			groupBox1.Controls.Add(this._italicOption);
@@ -119,6 +126,45 @@
 			groupBox1.TabIndex = 9;
 			groupBox1.TabStop = false;
 			groupBox1.Text = "Style";
+			// 
+			// label3
+			// 
+			label3.AutoSize = true;
+			label3.Location = new System.Drawing.Point(10, 225);
+			label3.Name = "label3";
+			label3.Size = new System.Drawing.Size(102, 13);
+			label3.TabIndex = 11;
+			label3.Text = "Text Rendering Hint";
+			// 
+			// _hintCombo
+			// 
+			this._hintCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+			this._hintCombo.FormattingEnabled = true;
+			this._hintCombo.Location = new System.Drawing.Point(13, 241);
+			this._hintCombo.Name = "_hintCombo";
+			this._hintCombo.Size = new System.Drawing.Size(151, 21);
+			this._hintCombo.TabIndex = 7;
+			this._hintCombo.SelectedIndexChanged += new System.EventHandler(this.hintCombo_SelectedIndexChanged);
+			// 
+			// _bottomColorDisplay
+			// 
+			this._bottomColorDisplay.BackColor = System.Drawing.SystemColors.ButtonHighlight;
+			this._bottomColorDisplay.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+			this._bottomColorDisplay.Location = new System.Drawing.Point(131, 189);
+			this._bottomColorDisplay.Name = "_bottomColorDisplay";
+			this._bottomColorDisplay.Size = new System.Drawing.Size(22, 23);
+			this._bottomColorDisplay.TabIndex = 9;
+			this._bottomColorDisplay.Click += new System.EventHandler(this._bottomColorDisplay_Click);
+			// 
+			// _topColorDisplay
+			// 
+			this._topColorDisplay.BackColor = System.Drawing.SystemColors.ButtonHighlight;
+			this._topColorDisplay.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+			this._topColorDisplay.Location = new System.Drawing.Point(131, 166);
+			this._topColorDisplay.Name = "_topColorDisplay";
+			this._topColorDisplay.Size = new System.Drawing.Size(22, 23);
+			this._topColorDisplay.TabIndex = 7;
+			this._topColorDisplay.Click += new System.EventHandler(this._topColorDisplay_Click);
 			// 
 			// _strikeoutOption
 			// 
@@ -385,24 +431,14 @@
 			this._embedConfigurationOption.Text = "Embed Configuration in Font File";
 			this._embedConfigurationOption.UseVisualStyleBackColor = true;
 			// 
-			// _hintCombo
+			// label6
 			// 
-			this._hintCombo.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
-			this._hintCombo.FormattingEnabled = true;
-			this._hintCombo.Location = new System.Drawing.Point(13, 197);
-			this._hintCombo.Name = "_hintCombo";
-			this._hintCombo.Size = new System.Drawing.Size(151, 21);
-			this._hintCombo.TabIndex = 7;
-			this._hintCombo.SelectedIndexChanged += new System.EventHandler(this.hintCombo_SelectedIndexChanged);
-			// 
-			// label3
-			// 
-			label3.AutoSize = true;
-			label3.Location = new System.Drawing.Point(10, 181);
-			label3.Name = "label3";
-			label3.Size = new System.Drawing.Size(102, 13);
-			label3.TabIndex = 11;
-			label3.Text = "Text Rendering Hint";
+			label6.AutoSize = true;
+			label6.Location = new System.Drawing.Point(25, 182);
+			label6.Name = "label6";
+			label6.Size = new System.Drawing.Size(96, 13);
+			label6.TabIndex = 12;
+			label6.Text = "Top/Bottom Colors";
 			// 
 			// MainForm
 			// 
@@ -457,6 +493,8 @@
 		private System.Windows.Forms.ToolStripMenuItem loadConfigurationToolStripMenuItem;
 		private System.Windows.Forms.ToolStripSeparator toolStripSeparator2;
 		private System.Windows.Forms.ComboBox _hintCombo;
+		private System.Windows.Forms.Panel _bottomColorDisplay;
+		private System.Windows.Forms.Panel _topColorDisplay;
 	}
 }
 
