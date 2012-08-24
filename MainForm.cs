@@ -31,8 +31,7 @@ namespace SudoFont
 			_allFonts = new InstalledFontCollection();
 			foreach ( FontFamily family in _allFonts.Families )
 			{
-				if ( family.IsStyleAvailable( FontStyle.Regular ) )
-					_fontsList.Items.Add( family.Name );
+				_fontsList.Items.Add( family.Name );
 			}
 
 			// Add sizes.
@@ -117,6 +116,18 @@ namespace SudoFont
 				if ( ctl.Control.Checked && family.IsStyleAvailable( style & ctl.Style ) )
 					style |= ctl.Style;
 			}
+			
+			// If we still haven't arrived at a valid style, then let's just set any style this font will support.
+			if ( !family.IsStyleAvailable( style ) )
+			{
+				int numFontStyleBits = 5;
+				for ( int i=0; i < (int)Math.Pow( 2, numFontStyleBits ); i++ )
+				{
+					style = (FontStyle)i;
+					if ( family.IsStyleAvailable( style ) )
+						break;
+				}
+			}
 
 			return style;
 		}
@@ -132,15 +143,6 @@ namespace SudoFont
 
 			// Setup the FontStyle.
 			FontStyle style = GetFontStyleForFamily( family );
-
-			if ( family.IsStyleAvailable( FontStyle.Regular ) )
-				style = FontStyle.Regular;
-
-			foreach ( var ctl in _fontStyleControls )
-			{
-				if ( ctl.Control.Checked && family.IsStyleAvailable( style & ctl.Style ) )
-					style |= ctl.Style;
-			}
 
 			// Figure out the size.
 			int size = CurrentComboBoxFontSize;
