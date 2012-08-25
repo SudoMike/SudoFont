@@ -19,8 +19,13 @@ namespace SudoFont
 		public MainForm()
 		{
 			InitializeComponent();
+
+			_fontSystem = new DotNetFontSystem();
+
 			_fontPreview.BackColor = Color.Black;
 			_outputPreview.BackColor = Color.Black;
+
+			_characterSetControl.Text = _defaultCharacterSet;
 
 			_alphaOnlyControl.Checked = true;
 
@@ -28,11 +33,8 @@ namespace SudoFont
 			ResetCharacterSet();
 
 			// Fill up the fonts listbox.
-			_allFonts = new InstalledFontCollection();
-			foreach ( FontFamily family in _allFonts.Families )
-			{
-				_fontsList.Items.Add( family.Name );
-			}
+			for ( int iFamily=0; iFamily < _fontSystem.NumFontFamilies; iFamily++ )
+				_fontsList.Items.Add( _fontSystem.GetFontFamily( iFamily ).Name );
 
 			// Add sizes.
 			_sizeCombo.Items.Add( 6 );
@@ -66,9 +68,11 @@ namespace SudoFont
 			_hintCombo.Items.Add( "AntiAliasGridFit" );
 			_hintCombo.Items.Add( "AntiAlias" );
 			_hintCombo.SelectedIndex = 0;
-			
+
 			UpdateColorDisplays();
 			Recalculate();
+
+			_previewTextEntry.Text = _currentPreviewText;	
 		}
 
 		string CurrentSelectedFontFamilyName
@@ -104,7 +108,7 @@ namespace SudoFont
 			}
 		}
 
-		FontStyle GetFontStyleForFamily( FontFamily family )
+		FontStyle GetFontStyleForFamily( IFontFamily family )
 		{
 			FontStyle style = 0;
 
@@ -139,7 +143,7 @@ namespace SudoFont
 
 			// Get the font family.
 			string fontFamily = CurrentSelectedFontFamilyName;
-			FontFamily family = new FontFamily( fontFamily );
+			IFontFamily family = _fontSystem.GetFontFamilyByName( fontFamily );
 
 			// Setup the FontStyle.
 			FontStyle style = GetFontStyleForFamily( family );
@@ -147,7 +151,7 @@ namespace SudoFont
 			// Figure out the size.
 			int size = CurrentComboBoxFontSize;
 
-			_currentFont = new Font( fontFamily, size, style );
+			_currentFont = _fontSystem.CreateFont( fontFamily, size, style );
 
 			BuildPackedImage();
 
@@ -188,7 +192,7 @@ namespace SudoFont
 			runtimeFont.Load( reader );
 
 			// Draw the lines..
-			_fontPreviewBitmap = SudoFontTest.CreateBitmapFromString( runtimeFont, _packedImage, "Preview text built with RuntimeFont...", 0, 0 );
+			_fontPreviewBitmap = SudoFontTest.CreateBitmapFromString( runtimeFont, _packedImage, _currentPreviewText, 0, 0 );
 		}
 
 		string FormatSizeString( int numBytes )
@@ -248,7 +252,7 @@ namespace SudoFont
 						c.Character = characterSet[i];
 
 						// Draw this character into tempBitmap.
-						g.DrawString( c.Character.ToString(), _currentFont, whiteBrush, new Point( 0, 0 ) );
+						_currentFont.DrawString( g, c.Character.ToString(), whiteBrush, new Point( 0, 0 ) );
 
 						// Scan to find the extents.
 						Rectangle? startingExtentsNullable = GetMaximumCharacterExtents( g, _currentFont, c.Character );
@@ -334,7 +338,7 @@ namespace SudoFont
 			unsafe
 			{
 				FontStyle style = GetFontStyleForFamily( _currentFont.FontFamily );
-				int bottomPos = (int)( ( (float)_currentFont.FontFamily.GetCellAscent( style ) / _currentFont.FontFamily.GetEmHeight( style ) ) * _currentFont.Size );
+				int bottomPos = (int)_currentFont.GetBaselinePos( style );
 				uint *pDestBase = (uint*)dest.Scan0;
 
 				for ( int y=0; y < imageHeight; y++ )
@@ -552,9 +556,9 @@ namespace SudoFont
 			return true;
 		}
 
-		static Rectangle? GetMaximumCharacterExtents( Graphics g, Font font, Char ch )
+		static Rectangle? GetMaximumCharacterExtents( Graphics g, IFont font, Char ch )
 		{
-			SizeF size = g.MeasureString( ch.ToString(), font );
+			SizeF size = font.MeasureString( g, ch.ToString() );
 			return new Rectangle( 0, 0, (int)Math.Ceiling( size.Width ), (int)Math.Ceiling( size.Height ) );
 		}
 
@@ -946,7 +950,7 @@ namespace SudoFont
 		}
 
 		// Return the RectangleF for each character in the string.
-		static RectangleF[] MeasureAllCharacterRanges( Graphics g, string str, Font font )
+		static RectangleF[] MeasureAllCharacterRanges( Graphics g, string str, IFont font )
 		{
 			StringFormat testFormat = new StringFormat();
 
@@ -955,7 +959,7 @@ namespace SudoFont
 				ranges[i] = new CharacterRange( i, 1 );
 
 			testFormat.SetMeasurableCharacterRanges( ranges );
-			Region[] regions = g.MeasureCharacterRanges( str, font, new Rectangle( 0, 0, 1000, 1000 ), testFormat );
+			Region[] regions = font.MeasureCharacterRanges( g, str, new Rectangle( 0, 0, 1000, 1000 ), testFormat );
 			RectangleF[] rects = regions.Select( x => x.GetBounds(g) ).ToArray();
 			return rects;
 		}
@@ -964,28 +968,8 @@ namespace SudoFont
 		{
 			using ( SectionWriter sectionWriter = new SectionWriter( writer, RuntimeFont.FontFile_Section_FontInfo ) )
 			{
-				using ( Graphics g = CreateGraphics() )
-				{
-					float heightInPixels;
-
-					if ( _currentFont.Unit == GraphicsUnit.Point )
-					{
-						float heightInPoints = _currentFont.GetHeight();
-						float heightInInches = heightInPoints / 72.0f;
-						heightInPixels = heightInInches * g.DpiY;
-						writer.Write( (short)heightInPixels ); // Font height.
-					}
-					else if ( _currentFont.Unit == GraphicsUnit.Pixel )
-					{
-						heightInPixels = _currentFont.GetHeight();
-						writer.Write( (short)heightInPixels ); // Font height.
-					}
-					else
-					{
-						Debug.Assert( false );
-						writer.Write( (short)5 ); // Font height.
-					}
-				}
+				float heightInPixels = _currentFont.GetHeightInPixels( this );
+				writer.Write( (short)heightInPixels ); // Font height.
 			}
 		}
 
@@ -1081,8 +1065,6 @@ namespace SudoFont
 			{
 				using ( Graphics g = CreateGraphics() )
 				{
-					FontServices.KerningPair[] kerningPairs = FontServices.GetKerningPairs( _currentFont, g );
-
 					// First, figure out how many characters have kerning.
 					// Write the # of characters that have kerning.
 					writer.Write( (Int16)kernings.Count );
@@ -1334,6 +1316,19 @@ namespace SudoFont
 			_bottomColorDisplay.BackColor = _bottomColor;
 		}
 
+		private void _previewTextEntry_TextChanged( object sender, EventArgs e )
+		{
+			_currentPreviewText = _previewTextEntry.Text;
+			BuildFontPreviewBitmap();
+			_fontPreview.Invalidate();
+		}
+
+		private void _copyToClipboardButton_Click( object sender, EventArgs e )
+		{
+			Clipboard.SetImage( _fontPreviewBitmap );
+		}
+
+
 	
 		// Config file keys.
 		static readonly string ConfigFilenameHeader = "SudoFont Font Configuration File v1.0";
@@ -1352,7 +1347,9 @@ namespace SudoFont
 
 		string _prevFontFilename = null;
 
-		string _previewText = "0123456789 _*+- ()[]#@\nABCDEFGHIJKLMNOPQRSTUVWXYZ\nabcdefghijklmnopqrstuvwxyz";
+		string _defaultCharacterSet = "0123456789 _*+- ()[]#@\nABCDEFGHIJKLMNOPQRSTUVWXYZ\nabcdefghijklmnopqrstuvwxyz";
+
+		string _currentPreviewText = "Preview text built with RuntimeFont...";
 
 		FontStyleControl[] _fontStyleControls;
 		Bitmap _packedImage;
@@ -1360,8 +1357,7 @@ namespace SudoFont
 		// This is what's baked into the current packedImage texture.
 		CharacterInfo[] _finalCharacterSet;
 
-		Font _currentFont;
-		InstalledFontCollection _allFonts;
+		IFont _currentFont;
 
 		// This preserves the same directory that we'll create open and save dialogs at.
 		string _dialogsInitialDirectory;
@@ -1375,5 +1371,7 @@ namespace SudoFont
 
 		Color _topColor = Color.White;
 		Color _bottomColor = Color.White;
+
+		IFontSystem _fontSystem;
 	}
 }

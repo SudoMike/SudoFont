@@ -81,6 +81,7 @@ namespace SudoFont
 			}
 		}
 
+		// This isn't used anymore. It's left here as reference for how to get kerning data in C#.
 		public static KerningPair[] GetKerningPairs( Font font, Graphics graphics )
 		{
 			// Select the HFONT into the HDC.

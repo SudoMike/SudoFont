@@ -32,11 +32,12 @@
 			System.Windows.Forms.Label label1;
 			System.Windows.Forms.Label label2;
 			System.Windows.Forms.GroupBox groupBox1;
+			System.Windows.Forms.Label label6;
 			System.Windows.Forms.Label label3;
 			System.Windows.Forms.Label label4;
 			System.Windows.Forms.GroupBox groupBox3;
+			System.Windows.Forms.Label label5;
 			System.Windows.Forms.Button embedHelp;
-			System.Windows.Forms.Label label6;
 			this._hintCombo = new System.Windows.Forms.ComboBox();
 			this._bottomColorDisplay = new System.Windows.Forms.Panel();
 			this._topColorDisplay = new System.Windows.Forms.Panel();
@@ -45,6 +46,7 @@
 			this._italicOption = new System.Windows.Forms.CheckBox();
 			this._boldOption = new System.Windows.Forms.CheckBox();
 			this._sizeCombo = new System.Windows.Forms.ComboBox();
+			this._previewTextEntry = new System.Windows.Forms.TextBox();
 			this._fontsList = new System.Windows.Forms.ListBox();
 			this._fontPreview = new System.Windows.Forms.Panel();
 			this._outputPreview = new System.Windows.Forms.Panel();
@@ -64,15 +66,17 @@
 			this.toolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
 			this.exitToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
 			this._embedConfigurationOption = new System.Windows.Forms.CheckBox();
+			this._copyToClipboardButton = new System.Windows.Forms.Button();
 			_sizeLabel = new System.Windows.Forms.Label();
 			label1 = new System.Windows.Forms.Label();
 			label2 = new System.Windows.Forms.Label();
 			groupBox1 = new System.Windows.Forms.GroupBox();
+			label6 = new System.Windows.Forms.Label();
 			label3 = new System.Windows.Forms.Label();
 			label4 = new System.Windows.Forms.Label();
 			groupBox3 = new System.Windows.Forms.GroupBox();
+			label5 = new System.Windows.Forms.Label();
 			embedHelp = new System.Windows.Forms.Button();
-			label6 = new System.Windows.Forms.Label();
 			groupBox1.SuspendLayout();
 			groupBox3.SuspendLayout();
 			this.groupBox2.SuspendLayout();
@@ -127,14 +131,14 @@
 			groupBox1.TabStop = false;
 			groupBox1.Text = "Style";
 			// 
-			// label3
+			// label6
 			// 
-			label3.AutoSize = true;
-			label3.Location = new System.Drawing.Point(10, 225);
-			label3.Name = "label3";
-			label3.Size = new System.Drawing.Size(102, 13);
-			label3.TabIndex = 11;
-			label3.Text = "Text Rendering Hint";
+			label6.AutoSize = true;
+			label6.Location = new System.Drawing.Point(25, 182);
+			label6.Name = "label6";
+			label6.Size = new System.Drawing.Size(96, 13);
+			label6.TabIndex = 12;
+			label6.Text = "Top/Bottom Colors";
 			// 
 			// _hintCombo
 			// 
@@ -155,6 +159,15 @@
 			this._bottomColorDisplay.Size = new System.Drawing.Size(22, 23);
 			this._bottomColorDisplay.TabIndex = 9;
 			this._bottomColorDisplay.Click += new System.EventHandler(this._bottomColorDisplay_Click);
+			// 
+			// label3
+			// 
+			label3.AutoSize = true;
+			label3.Location = new System.Drawing.Point(10, 225);
+			label3.Name = "label3";
+			label3.Size = new System.Drawing.Size(102, 13);
+			label3.TabIndex = 11;
+			label3.Text = "Text Rendering Hint";
 			// 
 			// _topColorDisplay
 			// 
@@ -231,7 +244,10 @@
 			// 
 			// groupBox3
 			// 
+			groupBox3.Controls.Add(this._copyToClipboardButton);
+			groupBox3.Controls.Add(this._previewTextEntry);
 			groupBox3.Controls.Add(this._fontsList);
+			groupBox3.Controls.Add(label5);
 			groupBox3.Controls.Add(this._fontPreview);
 			groupBox3.Controls.Add(groupBox1);
 			groupBox3.Controls.Add(label1);
@@ -242,6 +258,14 @@
 			groupBox3.TabStop = false;
 			groupBox3.Text = "Font";
 			// 
+			// _previewTextEntry
+			// 
+			this._previewTextEntry.Location = new System.Drawing.Point(542, 47);
+			this._previewTextEntry.Name = "_previewTextEntry";
+			this._previewTextEntry.Size = new System.Drawing.Size(261, 20);
+			this._previewTextEntry.TabIndex = 12;
+			this._previewTextEntry.TextChanged += new System.EventHandler(this._previewTextEntry_TextChanged);
+			// 
 			// _fontsList
 			// 
 			this._fontsList.FormattingEnabled = true;
@@ -251,13 +275,22 @@
 			this._fontsList.TabIndex = 1;
 			this._fontsList.SelectedIndexChanged += new System.EventHandler(this._fontsList_SelectedIndexChanged);
 			// 
+			// label5
+			// 
+			label5.AutoSize = true;
+			label5.Location = new System.Drawing.Point(464, 50);
+			label5.Name = "label5";
+			label5.Size = new System.Drawing.Size(69, 13);
+			label5.TabIndex = 13;
+			label5.Text = "Preview Text";
+			// 
 			// _fontPreview
 			// 
 			this._fontPreview.BackColor = System.Drawing.SystemColors.ActiveBorder;
 			this._fontPreview.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-			this._fontPreview.Location = new System.Drawing.Point(464, 35);
+			this._fontPreview.Location = new System.Drawing.Point(464, 110);
 			this._fontPreview.Name = "_fontPreview";
-			this._fontPreview.Size = new System.Drawing.Size(321, 260);
+			this._fontPreview.Size = new System.Drawing.Size(339, 185);
 			this._fontPreview.TabIndex = 0;
 			this._fontPreview.Paint += new System.Windows.Forms.PaintEventHandler(this._fontPreview_Paint);
 			// 
@@ -431,14 +464,15 @@
 			this._embedConfigurationOption.Text = "Embed Configuration in Font File";
 			this._embedConfigurationOption.UseVisualStyleBackColor = true;
 			// 
-			// label6
+			// _copyToClipboardButton
 			// 
-			label6.AutoSize = true;
-			label6.Location = new System.Drawing.Point(25, 182);
-			label6.Name = "label6";
-			label6.Size = new System.Drawing.Size(96, 13);
-			label6.TabIndex = 12;
-			label6.Text = "Top/Bottom Colors";
+			this._copyToClipboardButton.Location = new System.Drawing.Point(464, 84);
+			this._copyToClipboardButton.Name = "_copyToClipboardButton";
+			this._copyToClipboardButton.Size = new System.Drawing.Size(103, 20);
+			this._copyToClipboardButton.TabIndex = 12;
+			this._copyToClipboardButton.Text = "Copy to Clipboard";
+			this._copyToClipboardButton.UseVisualStyleBackColor = true;
+			this._copyToClipboardButton.Click += new System.EventHandler(this._copyToClipboardButton_Click);
 			// 
 			// MainForm
 			// 
@@ -495,6 +529,8 @@
 		private System.Windows.Forms.ComboBox _hintCombo;
 		private System.Windows.Forms.Panel _bottomColorDisplay;
 		private System.Windows.Forms.Panel _topColorDisplay;
+		private System.Windows.Forms.TextBox _previewTextEntry;
+		private System.Windows.Forms.Button _copyToClipboardButton;
 	}
 }
 

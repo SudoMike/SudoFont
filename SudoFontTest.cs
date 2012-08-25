@@ -18,8 +18,15 @@ namespace SudoFont
 			// Draw the character.
 			int extraLineSpacing = 5;
 
-			int width = layouts[ layouts.Length - 1 ].XOffset + font.LineHeight * 2;
-			int height = layouts[ layouts.Length - 1 ].YOffset + font.LineHeight;
+			int width = 1;
+			int height = 1;
+			
+			if ( layouts.Length > 0 )
+			{
+				width = layouts[ layouts.Length - 1 ].XOffset + font.LineHeight * 2;
+				height = layouts[ layouts.Length - 1 ].YOffset + font.LineHeight;
+			}
+
 			if ( comparisonFont != null )
 			{
 				height += font.LineHeight + extraLineSpacing;
