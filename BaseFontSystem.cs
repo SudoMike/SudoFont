@@ -40,7 +40,7 @@ namespace SudoFont
 
 		void DrawString( Graphics g, string str, Brush brush, Point location );
 
-		Region[] MeasureCharacterRanges( Graphics g, string str, Rectangle rect, StringFormat testFormat );
+		float[] GetCharacterXPositions( Graphics g, string str );		// Gets the X offset of each character in the string.
 		SizeF MeasureString( Graphics g, string str );
 
 		float GetHeightInPixels( Control control );	// You must pass a Control here that can create a Graphics if this function needs one.

@@ -949,21 +949,6 @@ namespace SudoFont
 			_outputPreview.Invalidate();
 		}
 
-		// Return the RectangleF for each character in the string.
-		static RectangleF[] MeasureAllCharacterRanges( Graphics g, string str, IFont font )
-		{
-			StringFormat testFormat = new StringFormat();
-
-			CharacterRange[] ranges = new CharacterRange[ str.Length ];
-			for ( int i=0; i < str.Length; i++ )
-				ranges[i] = new CharacterRange( i, 1 );
-
-			testFormat.SetMeasurableCharacterRanges( ranges );
-			Region[] regions = font.MeasureCharacterRanges( g, str, new Rectangle( 0, 0, 1000, 1000 ), testFormat );
-			RectangleF[] rects = regions.Select( x => x.GetBounds(g) ).ToArray();
-			return rects;
-		}
-
 		void WriteFontInfoSection( BinaryWriter writer )
 		{
 			using ( SectionWriter sectionWriter = new SectionWriter( writer, RuntimeFont.FontFile_Section_FontInfo ) )
@@ -991,8 +976,9 @@ namespace SudoFont
 			for ( int i=0; i < _finalCharacterSet.Length; i++ )
 			{
 				// We pad with spaces on the sides because this returns different spacing numbers for characters on the edges of the string. Go figure..
-				RectangleF[] rects = MeasureAllCharacterRanges( g, " " + c.Character.ToString() + _finalCharacterSet[i].Character + " ", _currentFont );
-				int dist = (int)( rects[2].X - rects[1].X );
+				string measurementString = " " + c.Character.ToString() + _finalCharacterSet[i].Character + " ";
+				float[] xCoords = _currentFont.GetCharacterXPositions( g, measurementString );
+				int dist = (int)( xCoords[2] - xCoords[1] );
 				minDist = Math.Min( dist, minDist );
 				maxDist = Math.Max( dist, maxDist );
 				

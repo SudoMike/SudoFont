@@ -98,9 +98,22 @@ namespace SudoFont
 			g.DrawString( str, _font, brush, location );
 		}
 		
-		public Region[] MeasureCharacterRanges( Graphics g, string str, Rectangle rect, StringFormat testFormat )
+		public float[] GetCharacterXPositions( Graphics g, string str )
 		{
-			return g.MeasureCharacterRanges( str, _font, rect, testFormat );
+			// Setup the StringFormat with proper CharacterRange references.
+			StringFormat testFormat = new StringFormat();
+			CharacterRange[] ranges = new CharacterRange[ str.Length ];
+			for ( int i=0; i < str.Length; i++ )
+				ranges[i] = new CharacterRange( i, 1 );
+
+			testFormat.SetMeasurableCharacterRanges( ranges );
+
+			// Measure into Regions
+			Region[] regions = g.MeasureCharacterRanges( str, _font, new Rectangle( 0, 0, 1000, 1000 ), testFormat );
+
+			// Convert Regions to Rects, then X coords.
+			float[] xCoords = regions.Select( region => region.GetBounds( g ).X ).ToArray();
+			return xCoords;
 		}
 
 		public SizeF MeasureString( Graphics g, string str )

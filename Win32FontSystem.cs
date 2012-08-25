@@ -16,8 +16,135 @@ using System.Runtime.InteropServices;
 
 namespace SudoFont
 {
-	class Blah
+	class Win32FontSystem : IFontSystem
 	{
+		public Win32FontSystem( Control control )
+		{
+			// Get the list of font families.
+			LOGFONT lf = CreateLogFont();
+
+			IntPtr plogFont = Marshal.AllocHGlobal( Marshal.SizeOf( lf ) );
+			Marshal.StructureToPtr( lf, plogFont, true );
+
+			using ( Graphics g = control.CreateGraphics() )
+			{
+				try
+				{
+					IntPtr hDC = g.GetHdc();
+
+					EnumFontExDelegate callback = 
+						delegate( ref ENUMLOGFONTEX lpelfe, ref NEWTEXTMETRICEX lpntme, int FontType, int lParam )
+						{
+							try
+							{
+								// For now, just get the western font names..
+								if ( lpelfe.elfScript == "Western" )
+								{
+									_familyNames.Add( lpelfe.elfFullName );
+								}
+							}
+							catch ( Exception e )
+							{
+								System.Diagnostics.Trace.WriteLine(e.ToString());
+							}
+							return 1;
+						};
+
+					EnumFontFamiliesEx( hDC, plogFont, callback, IntPtr.Zero, 0 );
+
+					g.ReleaseHdc( hDC );
+				}
+				catch
+				{
+					MessageBox.Show( "Error enumerating Win32 fonts" );
+					Debug.Assert( false );
+				}
+				finally
+				{
+					Marshal.DestroyStructure( plogFont, typeof( LOGFONT ) );
+				}
+			}
+		}
+
+
+		public int NumFontFamilies 
+		{ 
+			get
+			{
+				return _familyNames.Count;
+			}
+		}
+
+		public IFontFamily GetFontFamily( int iFamily )
+		{
+			return new Win32FontFamily( _familyNames[iFamily] );
+		}
+
+		public IFontFamily GetFontFamilyByName( string familyName )
+		{
+			return new Win32FontFamily( familyName );
+		}
+
+		public IFont CreateFont( string familyName, int size, FontStyle style )
+		{
+			int fontWeight = (int)Win32FontSystem.FontWeight.FW_NORMAL;
+			if ( ( style & FontStyle.Bold ) != 0 )
+				fontWeight = (int)Win32FontSystem.FontWeight.FW_BOLD;
+
+			uint italic = 0;
+			if ( ( style & FontStyle.Italic ) != 0 )
+				italic = 1;
+
+			uint underline = 0;
+			if ( ( style & FontStyle.Underline ) != 0 )
+				underline = 1;
+
+			uint strikeout = 0;
+			if ( ( style & FontStyle.Strikeout ) != 0 )
+				strikeout = 1;
+
+			IntPtr hFont = Win32FontSystem.CreateFontW( 
+				size,	// height
+				0,		// width
+				0,		// escapement
+				0,		// orientation
+				fontWeight,
+				italic,	// italic
+				underline,	// underline
+				strikeout,	// strikeout
+				(uint)Win32FontSystem.FontCharSet.DEFAULT_CHARSET,
+				(uint)Win32FontSystem.FontPrecision.OUT_DEFAULT_PRECIS,
+				(uint)Win32FontSystem.FontClipPrecision.CLIP_DEFAULT_PRECIS,
+				(uint)Win32FontSystem.FontQuality.DEFAULT_QUALITY,
+				(uint)( Win32FontSystem.FontPitchAndFamily.DEFAULT_PITCH | Win32FontSystem.FontPitchAndFamily.FF_DONTCARE ),
+				familyName );
+
+			return new Win32Font( hFont );
+		}
+
+
+
+		// Get a LOGFONT for an HFONT.
+		public static LOGFONT GetLogFont( IntPtr hFont )
+		{
+			int sizeofLogFont = Marshal.SizeOf( typeof( LOGFONT ) );
+
+			// Allocate a LOGFONT and call GetObject to fill it in.
+			IntPtr plogFont = Marshal.AllocHGlobal( sizeofLogFont );
+			GetObject( hFont, sizeofLogFont, plogFont );
+
+			// Convert to a .NET LOGFONT
+			LOGFONT logfont = CreateLogFont();
+			Marshal.PtrToStructure( plogFont, logfont );
+
+			// Cleanup.
+			Marshal.DestroyStructure( plogFont, typeof( LOGFONT ) );
+			return logfont;
+		}
+
+		[DllImport("gdi32.dll")]
+		static extern int GetObject( IntPtr hgdiobj, int cbBuffer, IntPtr lpvObject );
+
 		[DllImport("gdi32.dll", CharSet = CharSet.Auto)]
 		static extern int EnumFontFamiliesEx(IntPtr hdc,
 										[In] IntPtr pLogfont,
@@ -29,7 +156,6 @@ namespace SudoFont
 		[StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
 		public class LOGFONT
 		{
-
 			public int lfHeight;
 			public int lfWidth;
 			public int lfEscapement;
@@ -208,88 +334,7 @@ namespace SudoFont
 		private const byte FF_DECORATIVE = (5 << 4);
 
 
-		public void RunTest( Graphics G )
-		{
-			LOGFONT lf = CreateLogFont("");
-
-			IntPtr plogFont = Marshal.AllocHGlobal(Marshal.SizeOf(lf));
-			Marshal.StructureToPtr(lf, plogFont, true);
-
-			int ret = 0;
-			try
-			{
-				IntPtr P = G.GetHdc();
-
-				del1 = new EnumFontExDelegate(callback1);
-				ret = EnumFontFamiliesEx(P, plogFont, del1, IntPtr.Zero, 0);
-
-				System.Diagnostics.Trace.WriteLine("EnumFontFamiliesEx = " + ret.ToString());
-
-				G.ReleaseHdc(P);
-			}
-			catch
-			{
-				System.Diagnostics.Trace.WriteLine("Error!");
-			}
-			finally
-			{
-				Marshal.DestroyStructure(plogFont, typeof(LOGFONT));
-
-			}
-			
-			
-			// Try calling CreateFont on each font.
-			int numCreated = 0;
-			foreach ( string faceName in this.FontNames )
-			{
-				IntPtr hFont = Blah.CreateFontW( 
-					12,
-					0,		// width
-					0,		// escapement
-					0,		// orientation
-					(int)Blah.FontWeight.FW_NORMAL,
-					0,	// italic
-					0,	// underline
-					0,	// strikeout
-					(uint)Blah.FontCharSet.DEFAULT_CHARSET,
-					(uint)Blah.FontPrecision.OUT_DEFAULT_PRECIS,
-					(uint)Blah.FontClipPrecision.CLIP_DEFAULT_PRECIS,
-					(uint)Blah.FontQuality.DEFAULT_QUALITY,
-					(uint)( Blah.FontPitchAndFamily.DEFAULT_PITCH | Blah.FontPitchAndFamily.FF_DONTCARE ),
-					faceName );
-
-				if ( hFont != IntPtr.Zero )
-				{
-					Debug.WriteLine( "Created " + faceName );
-					++numCreated;
-
-					Blah.DeleteObject( hFont );
-				}
-			}
-		}
-
-		public delegate int EnumFontExDelegate(ref ENUMLOGFONTEX lpelfe, ref NEWTEXTMETRICEX lpntme, int FontType, int lParam);
-			public EnumFontExDelegate del1;
-
-
-		public int callback1(ref ENUMLOGFONTEX lpelfe, ref NEWTEXTMETRICEX lpntme, int FontType, int lParam)
-		{
-			try
-			{ 
-				if ( lpelfe.elfScript == "Western" )
-				{
-					Debug.WriteLine( "Font: {0}, Style: {1}", lpelfe.elfFullName, lpelfe.elfStyle );
-					FontNames.Add( lpelfe.elfFullName );
-				}
-			}
-			catch (Exception e)
-			{
-				System.Diagnostics.Trace.WriteLine(e.ToString());
-			}
-			return 1;
-		}
-
-		public List< string > FontNames = new List<string>();
+		delegate int EnumFontExDelegate(ref ENUMLOGFONTEX lpelfe, ref NEWTEXTMETRICEX lpntme, int FontType, int lParam);
 
 		[DllImport("gdi32", EntryPoint="CreateFontW")]
 		public static extern IntPtr CreateFontW(
@@ -308,10 +353,10 @@ namespace SudoFont
 				[In] UInt32 fdwPitchAndFamily,
 				[In] [MarshalAs(UnmanagedType.LPStr)] string lpszFace );
 		
-		[DllImport("gdi32.dll")]
-		public static extern bool DeleteObject( IntPtr hObject );
+		[DllImport("gdi32.dll")]	public static extern bool DeleteObject( IntPtr hObject );
+		[DllImport("gdi32.dll")]	public static extern bool GetTextExtentPoint( IntPtr hdc, string lpString, int cbString, ref Size lpSize );
 
-		public static LOGFONT CreateLogFont(string fontname)
+		public static LOGFONT CreateLogFont()
 		{
 			LOGFONT lf = new LOGFONT();
 			lf.lfHeight = 0;
@@ -329,9 +374,104 @@ namespace SudoFont
 			lf.lfPitchAndFamily =  FontPitchAndFamily.FF_DONTCARE;
 			lf.lfFaceName = "";
 
-
 			return lf;
 		}	
+
+	
+		public List< string > _familyNames = new List<string>();
+	}
+
+
+	class Win32FontFamily : IFontFamily
+	{
+		public Win32FontFamily( string familyName )
+		{
+			_familyName = familyName;
+		}
+
+		public string Name 
+		{ 
+			get
+			{
+				return _familyName;
+			}
+		}
+
+		public bool IsStyleAvailable( FontStyle style )
+		{
+			return true; // TODO
+		}
+
+		string _familyName;
+	}
+
+
+	class Win32Font : IFont
+	{
+		public Win32Font( IntPtr hFont )
+		{
+			_font = hFont;
+			
+			if ( _font != IntPtr.Zero )
+			{
+				_logFont = Win32FontSystem.GetLogFont( hFont );
+			}
+		}
+
+		public string Name
+		{
+			get
+			{
+				return _logFont.lfFaceName;
+			}
+		}
+
+		public SizeF MeasureString( Graphics g, string str )
+		{
+			IntPtr hDC = g.GetHdc();
+			
+			Size size = new Size( 0, 0 );
+			Win32FontSystem.GetTextExtentPoint( hDC, str, str.Length, ref size );
+
+			return new SizeF( size.Width, size.Height );
+		}
+
+		public void DrawString( Graphics g, string str, Brush brush, Point location )
+		{
+		}
+
+		public float[] GetCharacterXPositions( Graphics g, string str )
+		{
+			return new float[0];
+		}
+
+		public float GetHeightInPixels( Control control )
+		{
+			return 12;
+		}
+
+		public float GetBaselinePos( FontStyle style )
+		{
+			return 3;
+		}
+
+		public IFontFamily FontFamily
+		{
+			get
+			{
+				return new Win32FontFamily( _logFont.lfFaceName );
+			}
+		}
+
+		~Win32Font()
+		{
+			Win32FontSystem.DeleteObject( _font );
+			_font = IntPtr.Zero;
+		}
+
+		
+		Win32FontSystem.LOGFONT _logFont;
+		IntPtr _font;
 	}
 }
 
