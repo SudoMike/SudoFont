@@ -98,14 +98,16 @@ namespace SudoFont
 			logFont.lfItalic = ( style & FontStyle.Italic ) != 0;
 			logFont.lfUnderline = ( style & FontStyle.Underline ) != 0;
 			logFont.lfStrikeOut = ( style & FontStyle.Strikeout ) != 0;
-			logFont.lfHeight = size;
 			logFont.lfCharSet = FontCharSet.DEFAULT_CHARSET;
 			logFont.lfClipPrecision = FontClipPrecision.CLIP_DEFAULT_PRECIS;
 			logFont.lfOutPrecision = FontPrecision.OUT_DEFAULT_PRECIS;
 			logFont.lfPitchAndFamily = Win32FontSystem.FontPitchAndFamily.DEFAULT_PITCH | Win32FontSystem.FontPitchAndFamily.FF_DONTCARE;
 
-			//IntPtr hFont = CreateFontIndirect( ref logFont );
+			logFont.lfHeight = size;
+			logFont.lfWidth = 0;
 
+			IntPtr hFont = CreateFontIndirect( logFont );
+			/*
 			IntPtr hFont = Win32FontSystem.CreateFontW( 
 				size,	// height
 				0,		// width
@@ -122,8 +124,9 @@ namespace SudoFont
 				(uint)( Win32FontSystem.FontPitchAndFamily.DEFAULT_PITCH | Win32FontSystem.FontPitchAndFamily.FF_DONTCARE ),
 				familyName );
 			LOGFONT testLogFont = Win32FontSystem.GetLogFont( hFont );
+			*/
 
-			return new Win32Font( hFont, testLogFont );
+			return new Win32Font( hFont, logFont );
 		}
 
 		static uint BoolToUInt( bool val )
@@ -185,8 +188,9 @@ namespace SudoFont
 										EnumFontExDelegate lpEnumFontFamExProc,
 										IntPtr lParam,
 										uint dwFlags);
-		[DllImport("gdi32.dll")] static extern IntPtr CreateFontIndirect( [In] ref LOGFONT lplf );
-
+		
+		//[DllImport("gdi32.dll")] static extern IntPtr CreateFontIndirect( [In] LOGFONT lplf );
+		[DllImport("gdi32.dll", CharSet=CharSet.Auto)] public static extern IntPtr CreateFontIndirect( [In, MarshalAs(UnmanagedType.LPStruct)] LOGFONT lplf );
 
 		[StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
 		public class LOGFONT
