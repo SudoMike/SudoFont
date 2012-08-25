@@ -40,7 +40,7 @@ namespace SudoFont
 								// For now, just get the western font names..
 								if ( lpelfe.elfScript == "Western" )
 								{
-									_familyNames.Add( lpelfe.elfFullName );
+									_familyLogFonts[ lpelfe.elfFullName ] = lpelfe.elfLogFont;
 								}
 							}
 							catch ( Exception e )
@@ -51,6 +51,7 @@ namespace SudoFont
 						};
 
 					EnumFontFamiliesEx( hDC, plogFont, callback, IntPtr.Zero, 0 );
+					_familyNames = _familyLogFonts.Keys.ToList();
 
 					g.ReleaseHdc( hDC );
 				}
@@ -66,8 +67,8 @@ namespace SudoFont
 			}
 		}
 
-
 		public int NumFontFamilies 
+
 		{ 
 			get
 			{
@@ -87,39 +88,72 @@ namespace SudoFont
 
 		public IFont CreateFont( string familyName, int size, FontStyle style )
 		{
-			int fontWeight = (int)Win32FontSystem.FontWeight.FW_NORMAL;
+			// Setup the LOGFONT that represents this font.
+			LOGFONT logFont = CopyLogFont( _familyLogFonts[familyName] );
+
+			logFont.lfWeight = Win32FontSystem.FontWeight.FW_NORMAL;
 			if ( ( style & FontStyle.Bold ) != 0 )
-				fontWeight = (int)Win32FontSystem.FontWeight.FW_BOLD;
+				logFont.lfWeight = Win32FontSystem.FontWeight.FW_BOLD;
 
-			uint italic = 0;
-			if ( ( style & FontStyle.Italic ) != 0 )
-				italic = 1;
+			logFont.lfItalic = ( style & FontStyle.Italic ) != 0;
+			logFont.lfUnderline = ( style & FontStyle.Underline ) != 0;
+			logFont.lfStrikeOut = ( style & FontStyle.Strikeout ) != 0;
+			logFont.lfHeight = size;
+			logFont.lfCharSet = FontCharSet.DEFAULT_CHARSET;
+			logFont.lfClipPrecision = FontClipPrecision.CLIP_DEFAULT_PRECIS;
+			logFont.lfOutPrecision = FontPrecision.OUT_DEFAULT_PRECIS;
+			logFont.lfPitchAndFamily = Win32FontSystem.FontPitchAndFamily.DEFAULT_PITCH | Win32FontSystem.FontPitchAndFamily.FF_DONTCARE;
 
-			uint underline = 0;
-			if ( ( style & FontStyle.Underline ) != 0 )
-				underline = 1;
-
-			uint strikeout = 0;
-			if ( ( style & FontStyle.Strikeout ) != 0 )
-				strikeout = 1;
+			//IntPtr hFont = CreateFontIndirect( ref logFont );
 
 			IntPtr hFont = Win32FontSystem.CreateFontW( 
 				size,	// height
 				0,		// width
 				0,		// escapement
 				0,		// orientation
-				fontWeight,
-				italic,	// italic
-				underline,	// underline
-				strikeout,	// strikeout
+				(int)logFont.lfWeight,
+				BoolToUInt( logFont.lfItalic ),	// italic
+				BoolToUInt( logFont.lfUnderline ),	// underline
+				BoolToUInt( logFont.lfStrikeOut ),	// strikeout
 				(uint)Win32FontSystem.FontCharSet.DEFAULT_CHARSET,
 				(uint)Win32FontSystem.FontPrecision.OUT_DEFAULT_PRECIS,
 				(uint)Win32FontSystem.FontClipPrecision.CLIP_DEFAULT_PRECIS,
 				(uint)Win32FontSystem.FontQuality.DEFAULT_QUALITY,
 				(uint)( Win32FontSystem.FontPitchAndFamily.DEFAULT_PITCH | Win32FontSystem.FontPitchAndFamily.FF_DONTCARE ),
 				familyName );
+			LOGFONT testLogFont = Win32FontSystem.GetLogFont( hFont );
 
-			return new Win32Font( hFont );
+			return new Win32Font( hFont, testLogFont );
+		}
+
+		static uint BoolToUInt( bool val )
+		{
+			return (uint)( val ? 1 : 0 );
+		}
+
+		static LOGFONT CopyLogFont( LOGFONT source )
+		{
+			LOGFONT dest = new LOGFONT()
+			{
+				lfHeight = source.lfHeight,
+				lfWidth = source.lfWidth,
+				lfEscapement = source.lfEscapement,
+				lfOrientation = source.lfOrientation,
+				lfWeight = source.lfWeight,
+			
+				lfItalic = source.lfItalic,
+				lfUnderline = source.lfUnderline,
+				lfStrikeOut = source.lfStrikeOut,
+				lfCharSet = source.lfCharSet,
+				lfOutPrecision = source.lfOutPrecision,
+				lfClipPrecision = source.lfClipPrecision,
+				lfQuality = source.lfQuality,
+				lfPitchAndFamily = source.lfPitchAndFamily,
+
+				lfFaceName = source.lfFaceName
+			};
+
+			return dest;
 		}
 
 
@@ -131,7 +165,7 @@ namespace SudoFont
 
 			// Allocate a LOGFONT and call GetObject to fill it in.
 			IntPtr plogFont = Marshal.AllocHGlobal( sizeofLogFont );
-			GetObject( hFont, sizeofLogFont, plogFont );
+			int numBytesStored = GetObject( hFont, sizeofLogFont, plogFont );
 
 			// Convert to a .NET LOGFONT
 			LOGFONT logfont = CreateLogFont();
@@ -151,6 +185,7 @@ namespace SudoFont
 										EnumFontExDelegate lpEnumFontFamExProc,
 										IntPtr lParam,
 										uint dwFlags);
+		[DllImport("gdi32.dll")] static extern IntPtr CreateFontIndirect( [In] ref LOGFONT lplf );
 
 
 		[StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
@@ -161,19 +196,17 @@ namespace SudoFont
 			public int lfEscapement;
 			public int lfOrientation;
 			public FontWeight lfWeight;
-			[MarshalAs(UnmanagedType.U1)]
-			public bool lfItalic;
-			[MarshalAs(UnmanagedType.U1)]
-			public bool lfUnderline;
-			[MarshalAs(UnmanagedType.U1)]
-			public bool lfStrikeOut;
+			
+			[MarshalAs(UnmanagedType.U1)]			public bool lfItalic;
+			[MarshalAs(UnmanagedType.U1)]			public bool lfUnderline;
+			[MarshalAs(UnmanagedType.U1)]			public bool lfStrikeOut;
 			public FontCharSet lfCharSet;
 			public FontPrecision lfOutPrecision;
 			public FontClipPrecision lfClipPrecision;
 			public FontQuality lfQuality;
 			public FontPitchAndFamily lfPitchAndFamily;
-			[MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]
-			public string lfFaceName;
+
+			[MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)]	public string lfFaceName;
 		}
 
 
@@ -356,6 +389,94 @@ namespace SudoFont
 		[DllImport("gdi32.dll")]	public static extern bool DeleteObject( IntPtr hObject );
 		[DllImport("gdi32.dll")]	public static extern bool GetTextExtentPoint( IntPtr hdc, string lpString, int cbString, ref Size lpSize );
 
+		[DllImport("gdi32.dll", EntryPoint="GetCharacterPlacementW")]  public static extern uint GetCharacterPlacementW( IntPtr hdc, [MarshalAs(UnmanagedType.LPWStr)] string lpString, int nCount, int nMaxExtent, ref GCP_RESULTS lpResults, uint dwFlags );
+		[DllImport("gdi32.dll")] public static extern IntPtr CreatePen( PenStyle fnPenStyle, int nWidth, uint crColor );
+		[DllImport("gdi32.dll")] public static extern uint SetTextColor( IntPtr hdc, uint crColor );
+
+		[DllImport("gdi32.dll")] public static extern bool GetCharABCWidthsFloat( IntPtr hdc, uint iFirstChar, uint iLastChar, [Out] ABCFLOAT [] lpABCF );
+
+		[StructLayout(LayoutKind.Sequential)]
+		public struct ABCFLOAT
+		{
+			 /// <summary>Specifies the A spacing of the character. The A spacing is the distance to add to the current
+			 /// position before drawing the character glyph.</summary>
+			 public float abcfA;
+			 /// <summary>Specifies the B spacing of the character. The B spacing is the width of the drawn portion of
+			 /// the character glyph.</summary>
+			 public float abcfB;
+			 /// <summary>Specifies the C spacing of the character. The C spacing is the distance to add to the current
+			 /// position to provide white space to the right of the character glyph.</summary>
+			 public float abcfC;
+		}
+
+		public enum PenStyle : int
+		{
+			PS_SOLID    = 0, //The pen is solid.
+			PS_DASH     = 1, //The pen is dashed.
+			PS_DOT      = 2, //The pen is dotted.
+			PS_DASHDOT      = 3, //The pen has alternating dashes and dots.
+			PS_DASHDOTDOT       = 4, //The pen has alternating dashes and double dots.
+			PS_NULL     = 5, //The pen is invisible.
+			PS_INSIDEFRAME      = 6,// Normally when the edge is drawn, it’s centred on the outer edge meaning that half the width of the pen is drawn
+				// outside the shape’s edge, half is inside the shape’s edge. When PS_INSIDEFRAME is specified the edge is drawn 
+				//completely inside the outer edge of the shape.
+			PS_USERSTYLE    = 7,
+			PS_ALTERNATE    = 8,
+			PS_STYLE_MASK       = 0x0000000F,
+
+			PS_ENDCAP_ROUND     = 0x00000000,
+			PS_ENDCAP_SQUARE    = 0x00000100,
+			PS_ENDCAP_FLAT      = 0x00000200,
+			PS_ENDCAP_MASK      = 0x00000F00,
+
+			PS_JOIN_ROUND       = 0x00000000,
+			PS_JOIN_BEVEL       = 0x00001000,
+			PS_JOIN_MITER       = 0x00002000,
+			PS_JOIN_MASK    = 0x0000F000,
+
+			PS_COSMETIC     = 0x00000000,
+			PS_GEOMETRIC    = 0x00010000,
+			PS_TYPE_MASK    = 0x000F0000
+		};
+
+		[StructLayout(LayoutKind.Sequential)]
+		public struct GCP_RESULTS
+		{
+			public int StructSize;
+			[MarshalAs(UnmanagedType.LPTStr)]
+			public string OutString;
+			public IntPtr Order;
+			public IntPtr Dx;
+			public IntPtr CaretPos;
+			public IntPtr Class;
+			public IntPtr Glyphs;
+			public int GlyphCount;
+			public int MaxFit;
+		}
+
+		[Flags]
+		public enum GCPFlags : uint
+		{
+			GCP_DBCS = 0x0001,
+			GCP_REORDER = 0x0002,
+			GCP_USEKERNING = 0x0008,
+			GCP_GLYPHSHAPE = 0x0010,
+			GCP_LIGATE = 0x0020,
+			GCP_DIACRITIC = 0x0100,
+			GCP_KASHIDA = 0x0400,
+			GCP_ERROR = 0x8000,
+			GCP_JUSTIFY = 0x00010000,
+			GCP_CLASSIN = 0x00080000,
+			GCP_MAXEXTENT = 0x00100000,
+			GCP_JUSTIFYIN = 0x00200000,
+			GCP_DISPLAYZWG = 0x00400000,
+			GCP_SYMSWAPOFF = 0x00800000,
+			GCP_NUMERICOVERRIDE = 0x01000000,
+			GCP_NEUTRALOVERRIDE = 0x02000000,
+			GCP_NUMERICSLATIN = 0x04000000,
+			GCP_NUMERICSLOCAL = 0x08000000,
+		}
+	
 		public static LOGFONT CreateLogFont()
 		{
 			LOGFONT lf = new LOGFONT();
@@ -377,8 +498,52 @@ namespace SudoFont
 			return lf;
 		}	
 
+		[DllImport("gdi32.dll", ExactSpelling=true, PreserveSig=true, SetLastError=true)] public static extern IntPtr SelectObject( IntPtr hdc, IntPtr hgdiobj );
+		[DllImport("gdi32.dll", CharSet = CharSet.Auto)] public static extern bool TextOut( IntPtr hdc, int nXStart, int nYStart, string lpString, int cbString );
+		
+		[DllImport("gdi32.dll")] public static extern int SetBkMode( IntPtr hdc, int iBkMode );
+		public const int BKMODE_TRANSPARENT = 1;
+		public const int BKMODE_OPAQUE = 2;
 	
-		public List< string > _familyNames = new List<string>();
+		
+		Dictionary< string, LOGFONT > _familyLogFonts = new Dictionary<string,LOGFONT>();
+		List< string > _familyNames = new List<string>();
+	}
+
+	public class GdiObjectSelector : IDisposable
+	{
+		public GdiObjectSelector( Graphics g, IntPtr hObject )
+		{
+			_graphics = g;
+			_hDC = g.GetHdc();
+			_prevObject = Win32FontSystem.SelectObject( _hDC, hObject );
+		}
+
+		public GdiObjectSelector( IntPtr hDC, IntPtr hObject )
+		{
+			_hDC = hDC;
+			_prevObject = Win32FontSystem.SelectObject( _hDC, hObject );
+		}
+
+		public void Dispose()
+		{
+			Win32FontSystem.SelectObject( _hDC, _prevObject );
+			
+			if ( _graphics != null )
+				_graphics.ReleaseHdc( _hDC );
+
+			_hDC = _prevObject = IntPtr.Zero;
+			_graphics = null;
+		}
+
+		public IntPtr HDC
+		{
+			get { return _hDC; }
+		}
+
+		Graphics _graphics;
+		IntPtr _hDC;
+		IntPtr _prevObject;
 	}
 
 
@@ -408,13 +573,14 @@ namespace SudoFont
 
 	class Win32Font : IFont
 	{
-		public Win32Font( IntPtr hFont )
+		public Win32Font( IntPtr hFont, Win32FontSystem.LOGFONT logFont )
 		{
 			_font = hFont;
 			
 			if ( _font != IntPtr.Zero )
 			{
-				_logFont = Win32FontSystem.GetLogFont( hFont );
+				//_logFont = Win32FontSystem.GetLogFont( hFont );
+				_logFont = logFont;
 			}
 		}
 
@@ -428,26 +594,89 @@ namespace SudoFont
 
 		public SizeF MeasureString( Graphics g, string str )
 		{
-			IntPtr hDC = g.GetHdc();
-			
-			Size size = new Size( 0, 0 );
-			Win32FontSystem.GetTextExtentPoint( hDC, str, str.Length, ref size );
-
-			return new SizeF( size.Width, size.Height );
+			using ( GdiObjectSelector selector = new GdiObjectSelector( g, _font ) )
+			{
+				Size size = new Size( 0, 0 );
+				Win32FontSystem.GetTextExtentPoint( selector.HDC, str, str.Length, ref size );
+				return new SizeF( size.Width, size.Height );
+			}
 		}
 
 		public void DrawString( Graphics g, string str, Brush brush, Point location )
 		{
+			SolidBrush solidBrush = brush as SolidBrush;
+			if ( solidBrush == null )
+				throw new Exception( "Win32Font.DrawString only supports SolidBrush" );
+
+			using ( GdiObjectSelector selector = new GdiObjectSelector( g, _font ) )
+			{
+				// Make a pen to represent the color.
+				uint crColor = (uint)( solidBrush.Color.R << 0 ) | (uint)( solidBrush.Color.G << 8 ) | (uint)( solidBrush.Color.B << 16 );
+				uint prevTextColor = Win32FontSystem.SetTextColor( selector.HDC, crColor );
+
+				// Set background mode to transparent.
+				int oldBKMode = Win32FontSystem.SetBkMode( selector.HDC, Win32FontSystem.BKMODE_TRANSPARENT );
+
+				Win32FontSystem.TextOut( selector.HDC, 0, 0, str, str.Length );
+				
+				Win32FontSystem.SetBkMode( selector.HDC, oldBKMode );
+				Win32FontSystem.SetTextColor( selector.HDC, prevTextColor );
+			}
 		}
 
 		public float[] GetCharacterXPositions( Graphics g, string str )
 		{
-			return new float[0];
+#if true
+			// Make sure our _charWidths list has all the necessary characters.
+			using ( GdiObjectSelector selector = new GdiObjectSelector( g, _font ) )
+			{
+				UpdateCharWidths( selector.HDC, str );
+			}
+
+			float[] xCoords = new float[ str.Length ];
+			float curXOffset = 0;
+			for ( int i=0; i < str.Length; i++ )
+			{
+				xCoords[i] = curXOffset;
+				Win32FontSystem.ABCFLOAT abc = _charWidths[ (uint)str[i] ];
+				curXOffset += abc.abcfA + abc.abcfB + abc.abcfC;
+			}
+
+			return xCoords;
+#else
+			// This method gives us spacing between character cells, but it doesn't tell us what the cells are!
+			Win32FontSystem.GCP_RESULTS results = new Win32FontSystem.GCP_RESULTS();
+			results.StructSize = Marshal.SizeOf( typeof( Win32FontSystem.GCP_RESULTS ) );
+
+			// Setup the int array for them to write results into.
+			int[] dx = new int[ str.Length ];
+			GCHandle handle = GCHandle.Alloc( dx, GCHandleType.Pinned );
+			results.Dx = Marshal.UnsafeAddrOfPinnedArrayElement( dx, 0 );
+
+			using ( GdiObjectSelector selector = new GdiObjectSelector( g, _font ) )
+			{
+				// Call GetCharacterPlacement
+				Win32FontSystem.GetCharacterPlacementW( 
+					selector.HDC, 
+					str, 
+					str.Length, 
+					0,				// max extent (ignored)
+					ref results,
+					(uint)Win32FontSystem.GCPFlags.GCP_USEKERNING );
+			}
+
+			// Unpin the array.
+			handle.Free();
+
+			// Convert to floats for output.
+			return dx.Select( x => (float)x ).ToArray();
+#endif
 		}
 
 		public float GetHeightInPixels( Control control )
 		{
-			return 12;
+			//lfHeight = -MulDiv(PointSize, GetDeviceCaps(hDC, LOGPIXELSY), 72);
+			return _logFont.lfHeight;
 		}
 
 		public float GetBaselinePos( FontStyle style )
@@ -469,7 +698,61 @@ namespace SudoFont
 			_font = IntPtr.Zero;
 		}
 
-		
+		void UpdateCharWidths( IntPtr hDC, string str )
+		{
+			if ( str.Length == 0 )
+				return;
+
+			// Figure out the character range for this string.
+			uint rangeMin = uint.MaxValue;
+			uint rangeMax = uint.MinValue;
+			for ( int i=0; i < str.Length; i++ )
+			{
+				uint ch = (uint)str[i];
+				rangeMin = Math.Min( rangeMin, ch );
+				rangeMax = Math.Max( rangeMax, ch );
+			}
+
+			if ( _charWidthsNumChars == 0 )
+			{
+				_charWidthsFirstChar = rangeMin;
+				_charWidthsNumChars = rangeMax - rangeMin + 1;
+				CalculateCharWidthRange( hDC, _charWidthsFirstChar, _charWidthsNumChars );
+			}
+			else
+			{
+				// Does this string's character range exceed the one we've calculated so far?
+				if ( rangeMin < _charWidthsFirstChar )
+				{
+					CalculateCharWidthRange( hDC, rangeMin, _charWidthsFirstChar-rangeMin );
+					_charWidthsFirstChar = rangeMin;
+				}
+				
+				if ( rangeMax >= _charWidthsFirstChar+_charWidthsNumChars )
+				{
+					CalculateCharWidthRange( hDC, _charWidthsFirstChar+_charWidthsNumChars, rangeMax - ( _charWidthsFirstChar + _charWidthsNumChars ) + 1 );
+					_charWidthsNumChars = rangeMax - _charWidthsFirstChar + 1;
+				}
+			}
+		}
+
+		void CalculateCharWidthRange( IntPtr hDC, uint firstChar, uint numChars )
+		{
+			Win32FontSystem.ABCFLOAT[] values = new Win32FontSystem.ABCFLOAT[numChars];
+			Win32FontSystem.GetCharABCWidthsFloat( hDC, firstChar, firstChar + numChars - 1, values );
+
+			for ( uint i=0; i < numChars; i++ )
+			{
+				Debug.Assert( !_charWidths.ContainsKey( i + firstChar ) );
+				_charWidths[i + firstChar] = values[i];
+			}
+		}
+
+		// Range of characters being used.
+		uint _charWidthsFirstChar = 0;
+		uint _charWidthsNumChars = 0;
+		Dictionary< uint, Win32FontSystem.ABCFLOAT > _charWidths = new Dictionary<uint,Win32FontSystem.ABCFLOAT>();
+
 		Win32FontSystem.LOGFONT _logFont;
 		IntPtr _font;
 	}

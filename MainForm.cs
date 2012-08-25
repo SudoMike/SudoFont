@@ -21,6 +21,7 @@ namespace SudoFont
 			InitializeComponent();
 
 			_fontSystem = new DotNetFontSystem();
+			//_fontSystem = new Win32FontSystem( this );
 
 			_fontPreview.BackColor = Color.Black;
 			_outputPreview.BackColor = Color.Black;
@@ -33,8 +34,14 @@ namespace SudoFont
 			ResetCharacterSet();
 
 			// Fill up the fonts listbox.
+			List< string > familyNames = new List<string>();
 			for ( int iFamily=0; iFamily < _fontSystem.NumFontFamilies; iFamily++ )
-				_fontsList.Items.Add( _fontSystem.GetFontFamily( iFamily ).Name );
+				familyNames.Add( _fontSystem.GetFontFamily( iFamily ).Name );
+
+			familyNames.Sort();
+
+			foreach ( string familyName in familyNames )
+				_fontsList.Items.Add( familyName );
 
 			// Add sizes.
 			_sizeCombo.Items.Add( 6 );
@@ -613,7 +620,7 @@ namespace SudoFont
 		{
 			// Get the font family.
 			string fontFamily = _fontsList.SelectedItem.ToString();
-			FontFamily family = new FontFamily( fontFamily );
+			IFontFamily family = _fontSystem.GetFontFamilyByName( fontFamily );
 
 			// Figure out which styles are available.
 			foreach ( var ctl in _fontStyleControls )
