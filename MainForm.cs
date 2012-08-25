@@ -345,7 +345,13 @@ namespace SudoFont
 			unsafe
 			{
 				FontStyle style = GetFontStyleForFamily( _currentFont.FontFamily );
-				int bottomPos = (int)_currentFont.GetBaselinePos( style );
+				int bottomPos;
+
+				using ( Graphics g = this.CreateGraphics() )
+				{
+					bottomPos = (int)_currentFont.GetBaselinePos( g, style );
+				}
+
 				uint *pDestBase = (uint*)dest.Scan0;
 
 				for ( int y=0; y < imageHeight; y++ )

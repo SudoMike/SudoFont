@@ -148,7 +148,7 @@ namespace SudoFont
 			return heightInPixels;
 		}
 
-		public float GetBaselinePos( FontStyle style )
+		public float GetBaselinePos( Graphics g, FontStyle style )
 		{
 			return ( ( (float)_font.FontFamily.GetCellAscent( style ) / _font.FontFamily.GetEmHeight( style ) ) * _font.Size );
 		}

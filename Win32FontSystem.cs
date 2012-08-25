@@ -102,6 +102,7 @@ namespace SudoFont
 			logFont.lfClipPrecision = FontClipPrecision.CLIP_DEFAULT_PRECIS;
 			logFont.lfOutPrecision = FontPrecision.OUT_DEFAULT_PRECIS;
 			logFont.lfPitchAndFamily = Win32FontSystem.FontPitchAndFamily.DEFAULT_PITCH | Win32FontSystem.FontPitchAndFamily.FF_DONTCARE;
+			logFont.lfQuality = FontQuality.CLEARTYPE_QUALITY;
 
 			logFont.lfHeight = size;
 			logFont.lfWidth = 0;
@@ -298,6 +299,33 @@ namespace SudoFont
 			FF_SCRIPT = (4 << 4),
 			FF_DECORATIVE = (5 << 4),
 		}
+
+		[StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+		public struct TEXTMETRIC
+		{
+			public int tmHeight;
+			public int tmAscent;
+			public int tmDescent;
+			public int tmInternalLeading;
+			public int tmExternalLeading;
+			public int tmAveCharWidth;
+			public int tmMaxCharWidth;
+			public int tmWeight;
+			public int tmOverhang;
+			public int tmDigitizedAspectX;
+			public int tmDigitizedAspectY;
+			public char tmFirstChar;
+			public char tmLastChar;
+			public char tmDefaultChar;
+			public char tmBreakChar;
+			public byte tmItalic;
+			public byte tmUnderlined;
+			public byte tmStruckOut;
+			public byte tmPitchAndFamily;
+			public byte tmCharSet;
+		}
+
+		[DllImport("gdi32.dll", CharSet = CharSet.Auto)] public static extern bool GetTextMetrics( IntPtr hdc, out TEXTMETRIC lptm );
 
 		[StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
 		public struct NEWTEXTMETRIC
@@ -580,12 +608,7 @@ namespace SudoFont
 		public Win32Font( IntPtr hFont, Win32FontSystem.LOGFONT logFont )
 		{
 			_font = hFont;
-			
-			if ( _font != IntPtr.Zero )
-			{
-				//_logFont = Win32FontSystem.GetLogFont( hFont );
-				_logFont = logFont;
-			}
+			_logFont = logFont;
 		}
 
 		public string Name
@@ -680,12 +703,18 @@ namespace SudoFont
 		public float GetHeightInPixels( Control control )
 		{
 			//lfHeight = -MulDiv(PointSize, GetDeviceCaps(hDC, LOGPIXELSY), 72);
-			return _logFont.lfHeight;
+			return Math.Abs( _logFont.lfHeight );
 		}
 
-		public float GetBaselinePos( FontStyle style )
+		public float GetBaselinePos( Graphics g, FontStyle style )
 		{
-			return 3;
+			using ( GdiObjectSelector selector = new GdiObjectSelector( g, _font ) )
+			{
+				Win32FontSystem.TEXTMETRIC metrics;
+				Win32FontSystem.GetTextMetrics( selector.HDC, out metrics );
+
+				return ( ( (float)metrics.tmAscent / metrics.tmHeight ) * _logFont.lfHeight );
+			}
 		}
 
 		public IFontFamily FontFamily

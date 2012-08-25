@@ -44,7 +44,7 @@ namespace SudoFont
 		SizeF MeasureString( Graphics g, string str );
 
 		float GetHeightInPixels( Control control );	// You must pass a Control here that can create a Graphics if this function needs one.
-		float GetBaselinePos( FontStyle style );	// This returns the distance from the top of the font to the baseline that characters sit on.
+		float GetBaselinePos( Graphics g, FontStyle style );	// This returns the distance from the top of the font to the baseline that characters sit on.
 
 		IFontFamily FontFamily { get; }
 	}
