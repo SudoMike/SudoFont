@@ -19,29 +19,19 @@ namespace SudoFont
 		public MainForm()
 		{
 			InitializeComponent();
-
-			_fontSystem = new DotNetFontSystem();
-			//_fontSystem = new Win32FontSystem( this );
-
+			
 			_fontPreview.BackColor = Color.Black;
 			_outputPreview.BackColor = Color.Black;
-
+			ResetCharacterSet();	// Setup a default character set.
 			_characterSetControl.Text = _defaultCharacterSet;
 
 			_alphaOnlyControl.Checked = true;
 
-			// Setup a default character set.
-			ResetCharacterSet();
-
-			// Fill up the fonts listbox.
-			List< string > familyNames = new List<string>();
-			for ( int iFamily=0; iFamily < _fontSystem.NumFontFamilies; iFamily++ )
-				familyNames.Add( _fontSystem.GetFontFamily( iFamily ).Name );
-
-			familyNames.Sort();
-
-			foreach ( string familyName in familyNames )
-				_fontsList.Items.Add( familyName );
+			_fontStyleControls = new FontStyleControl[4];
+			_fontStyleControls[0] = new FontStyleControl() { Control = _boldOption, Style = FontStyle.Bold, ConfigFileKey = "IsBold" };
+			_fontStyleControls[1] = new FontStyleControl() { Control = _italicOption, Style = FontStyle.Italic, ConfigFileKey = "IsItalic" };
+			_fontStyleControls[2] = new FontStyleControl() { Control = _underlineOption, Style = FontStyle.Underline, ConfigFileKey = "IsUnderline" };
+			_fontStyleControls[3] = new FontStyleControl() { Control = _strikeoutOption, Style = FontStyle.Strikeout, ConfigFileKey = "IsStrikeout" };
 
 			// Add sizes.
 			_sizeCombo.Items.Add( 6 );
@@ -58,12 +48,37 @@ namespace SudoFont
 			_sizeCombo.Items.Add( 48 );
 			_sizeCombo.Items.Add( 60 );
 			_sizeCombo.Items.Add( 72 );
+			
+			InitWithFontSystem( FontSystemEnum.DotNet );
+		}
 
-			_fontStyleControls = new FontStyleControl[4];
-			_fontStyleControls[0] = new FontStyleControl() { Control = _boldOption, Style = FontStyle.Bold, ConfigFileKey = "IsBold" };
-			_fontStyleControls[1] = new FontStyleControl() { Control = _italicOption, Style = FontStyle.Italic, ConfigFileKey = "IsItalic" };
-			_fontStyleControls[2] = new FontStyleControl() { Control = _underlineOption, Style = FontStyle.Underline, ConfigFileKey = "IsUnderline" };
-			_fontStyleControls[3] = new FontStyleControl() { Control = _strikeoutOption, Style = FontStyle.Strikeout, ConfigFileKey = "IsStrikeout" };
+		void InitWithFontSystem( FontSystemEnum system )
+		{
+			_currentFontSystem = system;
+
+			if ( system == FontSystemEnum.DotNet )
+			{
+				_fontSystem = new DotNetFontSystem();
+				_fontSystemDotNetControl.Checked = true;
+			}
+			else
+			{
+				_fontSystem = new Win32FontSystem( this );
+				_fontSystemDotNetControl.Checked = false;
+			}
+
+			_fontSystemWin32Control.Checked = !_fontSystemDotNetControl.Checked;
+
+			// Fill up the fonts listbox.
+			List< string > familyNames = new List<string>();
+			for ( int iFamily=0; iFamily < _fontSystem.NumFontFamilies; iFamily++ )
+				familyNames.Add( _fontSystem.GetFontFamily( iFamily ).Name );
+
+			familyNames.Sort();
+
+			_fontsList.Items.Clear();
+			foreach ( string familyName in familyNames )
+				_fontsList.Items.Add( familyName );
 
 			_fontsList.SelectedItem = "Arial";
 			_sizeCombo.SelectedItem = 12;
@@ -160,6 +175,9 @@ namespace SudoFont
 
 			_currentFont = _fontSystem.CreateFont( fontFamily, size, style );
 
+			if ( _gradientBottomOffset == -1 )
+				ResetTopAndBottomGradientOffsets();
+
 			BuildPackedImage();
 
 			if ( _packedImage != null )
@@ -200,6 +218,8 @@ namespace SudoFont
 
 			// Draw the lines..
 			_fontPreviewBitmap = SudoFontTest.CreateBitmapFromString( runtimeFont, _packedImage, _currentPreviewText, 0, 0 );
+
+			UpdateAlphaPreviewWindow();
 		}
 
 		string FormatSizeString( int numBytes )
@@ -345,22 +365,23 @@ namespace SudoFont
 			unsafe
 			{
 				FontStyle style = GetFontStyleForFamily( _currentFont.FontFamily );
-				int bottomPos;
-
-				using ( Graphics g = this.CreateGraphics() )
-				{
-					bottomPos = (int)_currentFont.GetBaselinePos( g, style );
-				}
-
 				uint *pDestBase = (uint*)dest.Scan0;
+
+				int gradientDistance = _gradientBottomOffset - _gradientTopOffset;
 
 				for ( int y=0; y < imageHeight; y++ )
 				{
 					// Figure out shading.
-					int shadingY = y + shadingYOffset;
+					int shadingY = ( y + shadingYOffset - _gradientTopOffset );
 					int shadingR, shadingG, shadingB;
 					
-					if ( shadingY >= bottomPos )
+					if ( shadingY <= 0 )
+					{
+						shadingR = _topColor.R;
+						shadingG = _topColor.G;
+						shadingB = _topColor.B;
+					}
+					else if ( shadingY >= gradientDistance )
 					{
 						shadingR = _bottomColor.R;
 						shadingG = _bottomColor.G;
@@ -368,9 +389,9 @@ namespace SudoFont
 					}
 					else
 					{
-						shadingR = _topColor.R + ( ( _bottomColor.R - _topColor.R ) * shadingY ) / bottomPos;
-						shadingG = _topColor.G + ( ( _bottomColor.G - _topColor.G ) * shadingY ) / bottomPos;
-						shadingB = _topColor.B + ( ( _bottomColor.B - _topColor.B ) * shadingY ) / bottomPos;
+						shadingR = _topColor.R + ( ( _bottomColor.R - _topColor.R ) * shadingY ) / gradientDistance;
+						shadingG = _topColor.G + ( ( _bottomColor.G - _topColor.G ) * shadingY ) / gradientDistance;
+						shadingB = _topColor.B + ( ( _bottomColor.B - _topColor.B ) * shadingY ) / gradientDistance;
 					}
 
 					int outY = destY + y;
@@ -666,6 +687,7 @@ namespace SudoFont
 		private void _sizeCombo_SelectedIndexChanged( object sender, EventArgs e )
 		{
 			Recalculate();
+			ResetTopAndBottomGradientOffsets();
 		}
 
 		private void _characterSetControl_TextChanged( object sender, EventArgs e )
@@ -812,14 +834,46 @@ namespace SudoFont
 					if ( options.ContainsKey( ConfigFileKey_BottomColorB ) ) bottomB = Convert.ToInt32( options[ ConfigFileKey_BottomColorB ] );
 					_bottomColor = Color.FromArgb( bottomR, bottomG, bottomB );
 
-					CurrentSelectedFontFamilyName = GetOption( options, ConfigFileKey_FontFamily );
-					CurrentComboBoxFontSize = Convert.ToInt32( GetOption( options, ConfigFileKey_FontSize ) );
-
 					foreach ( var ctl in _fontStyleControls )
 						ctl.Control.Checked = Convert.ToBoolean( GetOption( options, ctl.ConfigFileKey ) );
 
 					_alphaOnlyControl.Checked = Convert.ToBoolean( GetOption( options, ConfigFileKey_AlphaOnly ) );
 					_embedConfigurationOption.Checked = Convert.ToBoolean( GetOption( options, ConfigFileKey_EmbedConfigInFontFile ) );
+					
+					// Set the hint text..
+					string hintText = _hintCombo.Items[0].ToString();
+					int fontSystem = 0;
+					int gradientTopOffset = 0;
+					int gradientBottomOffset = -1;
+					try
+					{
+						hintText = GetOption( options, ConfigFileKey_TextRenderingHint );
+
+						gradientTopOffset = Convert.ToInt32( GetOption( options, ConfigFileKey_GradientTopOffset ) );
+						gradientBottomOffset = Convert.ToInt32( GetOption( options, ConfigFileKey_GradientBottomOffset ) );
+
+						if ( options.ContainsKey( ConfigFileKey_FontSystem ) )
+							fontSystem = Convert.ToInt32( GetOption( options, ConfigFileKey_FontSystem ) );
+					}
+					catch ( Exception )
+					{
+					}
+
+					_hintCombo.Text = hintText;
+
+					if ( fontSystem != (int)_currentFontSystem )
+					{
+						if ( fontSystem == 0 )
+							InitWithFontSystem( FontSystemEnum.DotNet );
+						else
+							InitWithFontSystem( FontSystemEnum.Win32 );
+					}
+
+					CurrentSelectedFontFamilyName = GetOption( options, ConfigFileKey_FontFamily );
+					CurrentComboBoxFontSize = Convert.ToInt32( GetOption( options, ConfigFileKey_FontSize ) );
+					
+					this.GradientTopOffsetControlValue = _gradientTopOffset = gradientTopOffset;
+					this.GradientBottomOffsetControlValue = _gradientBottomOffset = gradientBottomOffset;
 				}
 				catch ( Exception )
 				{
@@ -888,6 +942,18 @@ namespace SudoFont
 			WriteOption( writer, ConfigFileKey_BottomColorR, _bottomColor.R );
 			WriteOption( writer, ConfigFileKey_BottomColorG, _bottomColor.G );
 			WriteOption( writer, ConfigFileKey_BottomColorB, _bottomColor.B );
+
+			WriteOption( writer, ConfigFileKey_GradientTopOffset, _gradientTopOffset );
+			WriteOption( writer, ConfigFileKey_GradientBottomOffset, _gradientBottomOffset );
+
+			// Set the hint text..
+			WriteOption( writer, ConfigFileKey_TextRenderingHint, _hintCombo.Text );
+
+			int fontSystem = 0;
+			if ( _currentFontSystem == FontSystemEnum.Win32 )
+				fontSystem = 1;
+
+			WriteOption( writer, ConfigFileKey_FontSystem, fontSystem );
 		}
 
 		void WriteOption( StreamWriter writer, string optionName, string value )
@@ -1324,17 +1390,196 @@ namespace SudoFont
 
 		private void _copyToClipboardButton_Click( object sender, EventArgs e )
 		{
+			// This method loses the alpha channel.
 			Clipboard.SetImage( _fontPreviewBitmap );
+
+			// This method preserves the alpha channel, but most apps can't take a PNG off the clipboard!
+			/*
+			// Put a PNG on the clipboard because that will preserve the alpha channel.
+			if ( _fontPreviewBitmap != null )
+			{
+				using ( var stream = new MemoryStream() )
+				{
+					_fontPreviewBitmap.Save( stream, ImageFormat.Png );
+					stream.Position = 0;
+					var data = new DataObject( "PNG", stream );
+
+					Clipboard.Clear();
+					Clipboard.SetDataObject(data, true);
+				}
+			}
+			*/
+		}
+
+		private void _savePNGButton_Click( object sender, EventArgs e )
+		{
+			if ( _fontPreviewBitmap == null )
+				return;
+
+			SaveFileDialog dlg = new SaveFileDialog();
+			dlg.InitialDirectory = Environment.CurrentDirectory;
+			dlg.Filter = "PNG Files (*.png)|*.png|All Files (*.*)|*.*";
+			dlg.FilterIndex = 0;
+			dlg.InitialDirectory = _dialogsInitialDirectory;
+
+			if ( dlg.ShowDialog() == DialogResult.OK )
+			{
+				try
+				{
+					_fontPreviewBitmap.Save( dlg.FileName, ImageFormat.Png );
+				}
+				catch ( Exception saveException )
+				{
+					MessageBox.Show( string.Format( "Unable to open {0}: {1}", dlg.FileName, saveException.ToString() ) );
+				}
+
+				_dialogsInitialDirectory = Path.GetDirectoryName( dlg.FileName );
+			}
+		}
+
+		private void _fontSystemDotNetControl_Click( object sender, EventArgs e )
+		{
+			InitWithFontSystem( FontSystemEnum.DotNet );
+		}
+
+		private void _fontSystemWin32Control_Click( object sender, EventArgs e )
+		{
+			InitWithFontSystem( FontSystemEnum.Win32);
+		}
+
+		private void MainForm_Move( object sender, EventArgs e )
+		{
+			UpdateAlphaPreviewWindow();
 		}
 
 
+		void UpdateAlphaPreviewWindow( bool allowOn=true )
+		{
+			// Prevent it from reentering here (when we call _alphaPreviewForm.Show below) and screwing everything up.
+			if ( _updatingAlphaPreviewWindow )
+				return;
+
+			_updatingAlphaPreviewWindow = true;
+
+			bool on = _alphaPreviewCheckbox.Checked && allowOn;
+
+			if ( on )
+			{
+				if ( _alphaPreviewForm == null )
+				{
+					_alphaPreviewForm = new PerPixelAlphaForm();
+					_alphaPreviewForm.ShowInTaskbar = false;
+				}
+			
+				_alphaPreviewForm.SetBitmap( _fontPreviewBitmap );
+				_alphaPreviewForm.Show();
+
+				// Reposition it.
+				_alphaPreviewForm.Left = this.Right + 10;
+				_alphaPreviewForm.Top = this.Top + _fontPreview.Top + ( this.Size.Height - this.ClientSize.Height );
+			}
+			else
+			{
+				if ( _alphaPreviewForm != null )
+				{
+					_alphaPreviewForm.Close();
+					_alphaPreviewForm = null;
+				}
+			}
+
+			_updatingAlphaPreviewWindow = false;
+		}
+
+		private void MainForm_Activated( object sender, EventArgs e )
+		{
+			UpdateAlphaPreviewWindow();
+		}
+
+		private void MainForm_Deactivate( object sender, EventArgs e )
+		{
+			UpdateAlphaPreviewWindow( false );
+		}
+
+		private void _alphaPreviewCheckbox_CheckedChanged( object sender, EventArgs e )
+		{
+			UpdateAlphaPreviewWindow();
+		}
+
+		private void _topOffsetTextbox_TextChanged( object sender, EventArgs e )
+		{
+			_gradientTopOffset = this.GradientTopOffsetControlValue;
+			Recalculate();
+		}
+
+		private void _bottomOffsetTextbox_TextChanged( object sender, EventArgs e )
+		{
+			_gradientBottomOffset = this.GradientBottomOffsetControlValue;
+			Recalculate();
+		}
+
+		void ResetTopAndBottomGradientOffsets()
+		{
+			this.GradientTopOffsetControlValue = _gradientTopOffset = 0;
+			
+			using ( Graphics g = this.CreateGraphics() )
+			{
+				FontStyle style = GetFontStyleForFamily( _currentFont.FontFamily );
+				this.GradientBottomOffsetControlValue = _gradientBottomOffset = (int)_currentFont.GetBaselinePos( g, style );
+			}
+		}
+
+		int GradientTopOffsetControlValue
+		{
+			get
+			{
+				try
+				{
+					return Convert.ToInt32( _topOffsetTextbox.Text );
+				}
+				catch ( Exception )
+				{
+					return 0;
+				}
+			}
+
+			set
+			{
+				_topOffsetTextbox.Text = value.ToString();
+			}
+		}
+
+		int GradientBottomOffsetControlValue
+		{
+			get
+			{
+				try
+				{
+					return Convert.ToInt32( _bottomOffsetTextbox.Text );
+				}
+				catch ( Exception )
+				{
+					return 0;
+				}
+			}
+
+			set
+			{
+				_bottomOffsetTextbox.Text = value.ToString();
+			}
+		}
+
 	
+
 		// Config file keys.
 		static readonly string ConfigFilenameHeader = "SudoFont Font Configuration File v1.0";
 		static readonly string ConfigFileKey_FontFamily = "FontFamily";
 		static readonly string ConfigFileKey_FontSize = "FontSize";
 		static readonly string ConfigFileKey_AlphaOnly = "IsAlphaOnly";
 		static readonly string ConfigFileKey_EmbedConfigInFontFile = "EmbedConfigInFontFile";
+		static readonly string ConfigFileKey_TextRenderingHint = "TextRenderingHint";	// ClearType, AntiAlias, etc..
+
+		static readonly string ConfigFileKey_GradientTopOffset = "GradientTopOffset";
+		static readonly string ConfigFileKey_GradientBottomOffset = "GradientBottomOffset";
 
 		static readonly string ConfigFileKey_TopColorR = "TopR";
 		static readonly string ConfigFileKey_TopColorG = "TopG";
@@ -1343,10 +1588,11 @@ namespace SudoFont
 		static readonly string ConfigFileKey_BottomColorR = "BtmR";
 		static readonly string ConfigFileKey_BottomColorG = "BtmG";
 		static readonly string ConfigFileKey_BottomColorB = "BtmB";
+		static readonly string ConfigFileKey_FontSystem = "FontSystem";
 
 		string _prevFontFilename = null;
 
-		string _defaultCharacterSet = "0123456789 _*+- ()[]#@\nABCDEFGHIJKLMNOPQRSTUVWXYZ\nabcdefghijklmnopqrstuvwxyz";
+		string _defaultCharacterSet = "0123456789 _*+- ()[]#@\nABCDEFGHIJKLMNOPQRSTUVWXYZ\nabcdefghijklmnopqrstuvwxyz!.,;'";
 
 		string _currentPreviewText = "Preview text built with RuntimeFont...";
 
@@ -1363,6 +1609,10 @@ namespace SudoFont
 
 		// This is drawn into the preview window.
 		Bitmap _fontPreviewBitmap;
+		
+		// This form hangs off the side. It can be used to overlay the exact result you'd get at runtime on top of Photoshop or your app.
+		PerPixelAlphaForm _alphaPreviewForm;
+		bool _updatingAlphaPreviewWindow = false;
 
 		// Used for testing. If you set this, it'll render the bitmap into _outputPreview.
 		// Use SetTestBitmap to set this so it'll invalidate _outputPreview!
@@ -1370,7 +1620,16 @@ namespace SudoFont
 
 		Color _topColor = Color.White;
 		Color _bottomColor = Color.White;
+		int _gradientTopOffset = 0;
+		int _gradientBottomOffset = 1;
 
 		IFontSystem _fontSystem;
+		FontSystemEnum _currentFontSystem;
+
+		enum FontSystemEnum
+		{
+			DotNet,
+			Win32
+		}
 	}
 }

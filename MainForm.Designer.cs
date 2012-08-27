@@ -46,6 +46,9 @@
 			this._italicOption = new System.Windows.Forms.CheckBox();
 			this._boldOption = new System.Windows.Forms.CheckBox();
 			this._sizeCombo = new System.Windows.Forms.ComboBox();
+			this._savePNGButton = new System.Windows.Forms.Button();
+			this._alphaPreviewCheckbox = new System.Windows.Forms.CheckBox();
+			this._copyToClipboardButton = new System.Windows.Forms.Button();
 			this._previewTextEntry = new System.Windows.Forms.TextBox();
 			this._fontsList = new System.Windows.Forms.ListBox();
 			this._fontPreview = new System.Windows.Forms.Panel();
@@ -65,8 +68,12 @@
 			this.exportFontImageToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
 			this.toolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
 			this.exitToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+			this.fontSystemToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+			this._fontSystemDotNetControl = new System.Windows.Forms.ToolStripMenuItem();
+			this._fontSystemWin32Control = new System.Windows.Forms.ToolStripMenuItem();
 			this._embedConfigurationOption = new System.Windows.Forms.CheckBox();
-			this._copyToClipboardButton = new System.Windows.Forms.Button();
+			this._topOffsetTextbox = new System.Windows.Forms.TextBox();
+			this._bottomOffsetTextbox = new System.Windows.Forms.TextBox();
 			_sizeLabel = new System.Windows.Forms.Label();
 			label1 = new System.Windows.Forms.Label();
 			label2 = new System.Windows.Forms.Label();
@@ -113,6 +120,8 @@
 			// 
 			// groupBox1
 			// 
+			groupBox1.Controls.Add(this._bottomOffsetTextbox);
+			groupBox1.Controls.Add(this._topOffsetTextbox);
 			groupBox1.Controls.Add(label6);
 			groupBox1.Controls.Add(this._hintCombo);
 			groupBox1.Controls.Add(this._bottomColorDisplay);
@@ -134,7 +143,7 @@
 			// label6
 			// 
 			label6.AutoSize = true;
-			label6.Location = new System.Drawing.Point(25, 182);
+			label6.Location = new System.Drawing.Point(12, 182);
 			label6.Name = "label6";
 			label6.Size = new System.Drawing.Size(96, 13);
 			label6.TabIndex = 12;
@@ -154,9 +163,9 @@
 			// 
 			this._bottomColorDisplay.BackColor = System.Drawing.SystemColors.ButtonHighlight;
 			this._bottomColorDisplay.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-			this._bottomColorDisplay.Location = new System.Drawing.Point(131, 189);
+			this._bottomColorDisplay.Location = new System.Drawing.Point(118, 189);
 			this._bottomColorDisplay.Name = "_bottomColorDisplay";
-			this._bottomColorDisplay.Size = new System.Drawing.Size(22, 23);
+			this._bottomColorDisplay.Size = new System.Drawing.Size(22, 20);
 			this._bottomColorDisplay.TabIndex = 9;
 			this._bottomColorDisplay.Click += new System.EventHandler(this._bottomColorDisplay_Click);
 			// 
@@ -173,9 +182,9 @@
 			// 
 			this._topColorDisplay.BackColor = System.Drawing.SystemColors.ButtonHighlight;
 			this._topColorDisplay.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
-			this._topColorDisplay.Location = new System.Drawing.Point(131, 166);
+			this._topColorDisplay.Location = new System.Drawing.Point(118, 166);
 			this._topColorDisplay.Name = "_topColorDisplay";
-			this._topColorDisplay.Size = new System.Drawing.Size(22, 23);
+			this._topColorDisplay.Size = new System.Drawing.Size(22, 20);
 			this._topColorDisplay.TabIndex = 7;
 			this._topColorDisplay.Click += new System.EventHandler(this._topColorDisplay_Click);
 			// 
@@ -244,6 +253,8 @@
 			// 
 			// groupBox3
 			// 
+			groupBox3.Controls.Add(this._savePNGButton);
+			groupBox3.Controls.Add(this._alphaPreviewCheckbox);
 			groupBox3.Controls.Add(this._copyToClipboardButton);
 			groupBox3.Controls.Add(this._previewTextEntry);
 			groupBox3.Controls.Add(this._fontsList);
@@ -257,6 +268,37 @@
 			groupBox3.TabIndex = 13;
 			groupBox3.TabStop = false;
 			groupBox3.Text = "Font";
+			// 
+			// _savePNGButton
+			// 
+			this._savePNGButton.Location = new System.Drawing.Point(573, 84);
+			this._savePNGButton.Name = "_savePNGButton";
+			this._savePNGButton.Size = new System.Drawing.Size(103, 20);
+			this._savePNGButton.TabIndex = 15;
+			this._savePNGButton.Text = "Save PNG";
+			this._savePNGButton.UseVisualStyleBackColor = true;
+			this._savePNGButton.Click += new System.EventHandler(this._savePNGButton_Click);
+			// 
+			// _alphaPreviewCheckbox
+			// 
+			this._alphaPreviewCheckbox.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
+			this._alphaPreviewCheckbox.Location = new System.Drawing.Point(703, 84);
+			this._alphaPreviewCheckbox.Name = "_alphaPreviewCheckbox";
+			this._alphaPreviewCheckbox.Size = new System.Drawing.Size(98, 20);
+			this._alphaPreviewCheckbox.TabIndex = 14;
+			this._alphaPreviewCheckbox.Text = "Alpha Preview";
+			this._alphaPreviewCheckbox.UseVisualStyleBackColor = true;
+			this._alphaPreviewCheckbox.CheckedChanged += new System.EventHandler(this._alphaPreviewCheckbox_CheckedChanged);
+			// 
+			// _copyToClipboardButton
+			// 
+			this._copyToClipboardButton.Location = new System.Drawing.Point(464, 84);
+			this._copyToClipboardButton.Name = "_copyToClipboardButton";
+			this._copyToClipboardButton.Size = new System.Drawing.Size(103, 20);
+			this._copyToClipboardButton.TabIndex = 12;
+			this._copyToClipboardButton.Text = "Copy to Clipboard";
+			this._copyToClipboardButton.UseVisualStyleBackColor = true;
+			this._copyToClipboardButton.Click += new System.EventHandler(this._copyToClipboardButton_Click);
 			// 
 			// _previewTextEntry
 			// 
@@ -373,7 +415,8 @@
 			// menuStrip1
 			// 
 			this.menuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.fileToolStripMenuItem});
+            this.fileToolStripMenuItem,
+            this.fontSystemToolStripMenuItem});
 			this.menuStrip1.Location = new System.Drawing.Point(0, 0);
 			this.menuStrip1.Name = "menuStrip1";
 			this.menuStrip1.Size = new System.Drawing.Size(833, 24);
@@ -451,6 +494,29 @@
 			this.exitToolStripMenuItem.Text = "E&xit";
 			this.exitToolStripMenuItem.Click += new System.EventHandler(this.exitMenuItem_Click);
 			// 
+			// fontSystemToolStripMenuItem
+			// 
+			this.fontSystemToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this._fontSystemDotNetControl,
+            this._fontSystemWin32Control});
+			this.fontSystemToolStripMenuItem.Name = "fontSystemToolStripMenuItem";
+			this.fontSystemToolStripMenuItem.Size = new System.Drawing.Size(84, 20);
+			this.fontSystemToolStripMenuItem.Text = "Font &System";
+			// 
+			// _fontSystemDotNetControl
+			// 
+			this._fontSystemDotNetControl.Name = "_fontSystemDotNetControl";
+			this._fontSystemDotNetControl.Size = new System.Drawing.Size(107, 22);
+			this._fontSystemDotNetControl.Text = ".NET";
+			this._fontSystemDotNetControl.Click += new System.EventHandler(this._fontSystemDotNetControl_Click);
+			// 
+			// _fontSystemWin32Control
+			// 
+			this._fontSystemWin32Control.Name = "_fontSystemWin32Control";
+			this._fontSystemWin32Control.Size = new System.Drawing.Size(107, 22);
+			this._fontSystemWin32Control.Text = "Win32";
+			this._fontSystemWin32Control.Click += new System.EventHandler(this._fontSystemWin32Control_Click);
+			// 
 			// _embedConfigurationOption
 			// 
 			this._embedConfigurationOption.AutoSize = true;
@@ -464,15 +530,21 @@
 			this._embedConfigurationOption.Text = "Embed Configuration in Font File";
 			this._embedConfigurationOption.UseVisualStyleBackColor = true;
 			// 
-			// _copyToClipboardButton
+			// _topOffsetTextbox
 			// 
-			this._copyToClipboardButton.Location = new System.Drawing.Point(464, 84);
-			this._copyToClipboardButton.Name = "_copyToClipboardButton";
-			this._copyToClipboardButton.Size = new System.Drawing.Size(103, 20);
-			this._copyToClipboardButton.TabIndex = 12;
-			this._copyToClipboardButton.Text = "Copy to Clipboard";
-			this._copyToClipboardButton.UseVisualStyleBackColor = true;
-			this._copyToClipboardButton.Click += new System.EventHandler(this._copyToClipboardButton_Click);
+			this._topOffsetTextbox.Location = new System.Drawing.Point(146, 166);
+			this._topOffsetTextbox.Name = "_topOffsetTextbox";
+			this._topOffsetTextbox.Size = new System.Drawing.Size(25, 20);
+			this._topOffsetTextbox.TabIndex = 13;
+			this._topOffsetTextbox.TextChanged += new System.EventHandler(this._topOffsetTextbox_TextChanged);
+			// 
+			// _bottomOffsetTextbox
+			// 
+			this._bottomOffsetTextbox.Location = new System.Drawing.Point(146, 189);
+			this._bottomOffsetTextbox.Name = "_bottomOffsetTextbox";
+			this._bottomOffsetTextbox.Size = new System.Drawing.Size(25, 20);
+			this._bottomOffsetTextbox.TabIndex = 14;
+			this._bottomOffsetTextbox.TextChanged += new System.EventHandler(this._bottomOffsetTextbox_TextChanged);
 			// 
 			// MainForm
 			// 
@@ -486,7 +558,10 @@
 			this.MainMenuStrip = this.menuStrip1;
 			this.Name = "MainForm";
 			this.Text = "Sudo Font";
+			this.Activated += new System.EventHandler(this.MainForm_Activated);
+			this.Deactivate += new System.EventHandler(this.MainForm_Deactivate);
 			this.Shown += new System.EventHandler(this.MainForm_Shown);
+			this.Move += new System.EventHandler(this.MainForm_Move);
 			groupBox1.ResumeLayout(false);
 			groupBox1.PerformLayout();
 			groupBox3.ResumeLayout(false);
@@ -531,6 +606,13 @@
 		private System.Windows.Forms.Panel _topColorDisplay;
 		private System.Windows.Forms.TextBox _previewTextEntry;
 		private System.Windows.Forms.Button _copyToClipboardButton;
+		private System.Windows.Forms.ToolStripMenuItem fontSystemToolStripMenuItem;
+		private System.Windows.Forms.ToolStripMenuItem _fontSystemDotNetControl;
+		private System.Windows.Forms.ToolStripMenuItem _fontSystemWin32Control;
+		private System.Windows.Forms.Button _savePNGButton;
+		private System.Windows.Forms.CheckBox _alphaPreviewCheckbox;
+		private System.Windows.Forms.TextBox _bottomOffsetTextbox;
+		private System.Windows.Forms.TextBox _topOffsetTextbox;
 	}
 }
 

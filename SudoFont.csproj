@@ -50,6 +50,9 @@
   <ItemGroup>
     <Compile Include="BaseFontSystem.cs" />
     <Compile Include="DotNetFontSystem.cs" />
+    <Compile Include="PerPixelAlphaForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="SudoFont.cs" />
     <Compile Include="FontServices.cs" />
     <Compile Include="MainForm.cs">

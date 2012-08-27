@@ -644,7 +644,7 @@ namespace SudoFont
 				// Set background mode to transparent.
 				int oldBKMode = Win32FontSystem.SetBkMode( selector.HDC, Win32FontSystem.BKMODE_TRANSPARENT );
 
-				Win32FontSystem.TextOut( selector.HDC, 0, 0, str, str.Length );
+				Win32FontSystem.TextOut( selector.HDC, location.X, location.Y, str, str.Length );
 				
 				Win32FontSystem.SetBkMode( selector.HDC, oldBKMode );
 				Win32FontSystem.SetTextColor( selector.HDC, prevTextColor );
@@ -758,6 +758,7 @@ namespace SudoFont
 				if ( rangeMin < _charWidthsFirstChar )
 				{
 					CalculateCharWidthRange( hDC, rangeMin, _charWidthsFirstChar-rangeMin );
+					_charWidthsNumChars += _charWidthsFirstChar-rangeMin;
 					_charWidthsFirstChar = rangeMin;
 				}
 				
@@ -767,6 +768,8 @@ namespace SudoFont
 					_charWidthsNumChars = rangeMax - _charWidthsFirstChar + 1;
 				}
 			}
+			
+			Debug.Assert( _charWidthsNumChars == _charWidths.Count );
 		}
 
 		void CalculateCharWidthRange( IntPtr hDC, uint firstChar, uint numChars )

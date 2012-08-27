@@ -10,7 +10,7 @@ namespace SudoFont
 	// This draws a string to a Bitmap.
 	public class SudoFontTest
 	{
-		public static Bitmap CreateBitmapFromString( RuntimeFont font, Bitmap pngBitmap, string testString, int startX, int startY, Font comparisonFont=null, bool win32APITest=false )
+		public static Bitmap CreateBitmapFromString( RuntimeFont font, Bitmap pngBitmap, string testString, int startX, int startY, IFont comparisonFont=null )
 		{
 			// Get the character positions.
 			FontLayout.CharacterLayout[] layouts = FontLayout.LayoutCharacters( font, testString, 0, 0 );
@@ -30,17 +30,14 @@ namespace SudoFont
 			if ( comparisonFont != null )
 			{
 				height += font.LineHeight + extraLineSpacing;
-
-				if ( win32APITest )
-					height += font.LineHeight + extraLineSpacing;
 			}
 
 			Color textColor = Color.White;
 
-			Bitmap bitmap = new Bitmap( width, height );
+			Bitmap bitmap = new Bitmap( width, height, PixelFormat.Format32bppArgb );
 			using ( Graphics g = Graphics.FromImage( bitmap ) )
 			{
-				g.Clear( Color.Black );
+				g.Clear( Color.Transparent );
 
 				foreach ( FontLayout.CharacterLayout layout in layouts )
 				{
@@ -53,11 +50,8 @@ namespace SudoFont
 				int curY = startY + font.LineHeight + extraLineSpacing;
 				if ( comparisonFont != null )
 				{
-					g.DrawString( testString, comparisonFont, new SolidBrush( textColor ), new Point( 0, curY ) );
+					comparisonFont.DrawString( g, testString, new SolidBrush( textColor ), new Point( 0, curY ) );
 					curY += font.LineHeight + extraLineSpacing;
-
-					if ( win32APITest )
-						FontServices.TextOut( g, comparisonFont, textColor, 3, curY, testString );
 				}
 			}
 
@@ -68,7 +62,7 @@ namespace SudoFont
 		// This can be used as reference for code that uses SudoFonts to rasterize text.
 		// If you set comparisonFont, it'll render the same string into the bitmap under the SudoFont output.
 		// This is useful for verifying/checking how close SudoFonts compare to .NET Graphics text output.
-		public static Bitmap CreateBitmapFromString( string fontFilename, string testString, int startX, int startY, Font comparisonFont=null, bool win32APITest=false )
+		public static Bitmap CreateBitmapFromString( string fontFilename, string testString, int startX, int startY, IFont comparisonFont=null )
 		{
 			try
 			{
@@ -83,7 +77,7 @@ namespace SudoFont
 					// Load the associated PNG file.
 					Bitmap pngBitmap = new Bitmap( Path.ChangeExtension( fontFilename, null ) + "-texture.png" );
 
-					return CreateBitmapFromString( font, pngBitmap, testString, startX, startY, comparisonFont, win32APITest );
+					return CreateBitmapFromString( font, pngBitmap, testString, startX, startY, comparisonFont );
 				}
 			}
 			catch ( Exception )
