@@ -25,7 +25,7 @@ namespace SudoFont
 
 		// Lookup a font family by name.
 		IFontFamily GetFontFamilyByName( string familyName );
-		IFont CreateFont( string familyName, int size, FontStyle style );
+		IFont CreateFont( string familyName, int size, FontStyle style, TextRenderingHint renderingHint );
 	}
 
 	public interface IFontFamily

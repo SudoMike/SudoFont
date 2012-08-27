@@ -45,10 +45,10 @@ namespace SudoFont
 			return null;
 		}
 
-		public IFont CreateFont( string familyName, int size, FontStyle style )
+		public IFont CreateFont( string familyName, int size, FontStyle style, TextRenderingHint renderingHint )
 		{
 			Font font = new Font( familyName, size, style );
-			return new DotNetFont( font );
+			return new DotNetFont( font, renderingHint );
 		}
 
 		InstalledFontCollection _installedFontCollection;
@@ -80,9 +80,10 @@ namespace SudoFont
 
 	class DotNetFont : IFont
 	{
-		public DotNetFont( Font font )
+		public DotNetFont( Font font, TextRenderingHint textRenderingHint )
 		{
 			_font = font;
+			_textRenderingHint = textRenderingHint;
 		}
 
 		public string Name
@@ -95,7 +96,12 @@ namespace SudoFont
 
 		public void DrawString( Graphics g, string str, Brush brush, Point location )
 		{
+			TextRenderingHint prevTextRenderingHint = g.TextRenderingHint;
+			g.TextRenderingHint = _textRenderingHint;
+
 			g.DrawString( str, _font, brush, location );
+
+			g.TextRenderingHint = prevTextRenderingHint;
 		}
 		
 		public float[] GetCharacterXPositions( Graphics g, string str )
@@ -166,6 +172,7 @@ namespace SudoFont
 
 		IFontFamily _fontFamily;
 		Font _font;
+		TextRenderingHint _textRenderingHint;
 	}
 }
 

@@ -86,7 +86,7 @@ namespace SudoFont
 			return new Win32FontFamily( familyName );
 		}
 
-		public IFont CreateFont( string familyName, int size, FontStyle style )
+		public IFont CreateFont( string familyName, int size, FontStyle style, TextRenderingHint textRenderingHint )
 		{
 			// Setup the LOGFONT that represents this font.
 			LOGFONT logFont = CopyLogFont( _familyLogFonts[familyName] );
@@ -102,7 +102,17 @@ namespace SudoFont
 			logFont.lfClipPrecision = FontClipPrecision.CLIP_DEFAULT_PRECIS;
 			logFont.lfOutPrecision = FontPrecision.OUT_DEFAULT_PRECIS;
 			logFont.lfPitchAndFamily = Win32FontSystem.FontPitchAndFamily.DEFAULT_PITCH | Win32FontSystem.FontPitchAndFamily.FF_DONTCARE;
-			logFont.lfQuality = FontQuality.CLEARTYPE_QUALITY;
+			
+			if ( textRenderingHint == TextRenderingHint.AntiAlias )
+				logFont.lfQuality = FontQuality.ANTIALIASED_QUALITY;
+			else if ( textRenderingHint == TextRenderingHint.AntiAliasGridFit )
+				logFont.lfQuality = FontQuality.PROOF_QUALITY;
+			else if ( textRenderingHint == TextRenderingHint.ClearTypeGridFit )
+				logFont.lfQuality = FontQuality.CLEARTYPE_QUALITY;
+			else if ( textRenderingHint == TextRenderingHint.SingleBitPerPixel || textRenderingHint == TextRenderingHint.SingleBitPerPixelGridFit )
+				logFont.lfQuality = FontQuality.NONANTIALIASED_QUALITY;
+			else
+				logFont.lfQuality = FontQuality.DEFAULT_QUALITY;
 
 			logFont.lfHeight = size;
 			logFont.lfWidth = 0;

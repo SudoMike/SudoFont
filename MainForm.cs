@@ -49,6 +49,14 @@ namespace SudoFont
 			_sizeCombo.Items.Add( 60 );
 			_sizeCombo.Items.Add( 72 );
 			
+			_hintCombo.Items.Add( "ClearTypeGridFit" );
+			_hintCombo.Items.Add( "SystemDefault" );
+			_hintCombo.Items.Add( "SingleBitPerPixelGridFit" );
+			_hintCombo.Items.Add( "SingleBitPerPixel" );
+			_hintCombo.Items.Add( "AntiAliasGridFit" );
+			_hintCombo.Items.Add( "AntiAlias" );
+			_hintCombo.SelectedIndex = 0;
+
 			InitWithFontSystem( FontSystemEnum.DotNet );
 		}
 
@@ -82,14 +90,6 @@ namespace SudoFont
 
 			_fontsList.SelectedItem = "Arial";
 			_sizeCombo.SelectedItem = 12;
-
-			_hintCombo.Items.Add( "ClearTypeGridFit" );
-			_hintCombo.Items.Add( "SystemDefault" );
-			_hintCombo.Items.Add( "SingleBitPerPixelGridFit" );
-			_hintCombo.Items.Add( "SingleBitPerPixel" );
-			_hintCombo.Items.Add( "AntiAliasGridFit" );
-			_hintCombo.Items.Add( "AntiAlias" );
-			_hintCombo.SelectedIndex = 0;
 
 			UpdateColorDisplays();
 			Recalculate();
@@ -173,7 +173,7 @@ namespace SudoFont
 			// Figure out the size.
 			int size = CurrentComboBoxFontSize;
 
-			_currentFont = _fontSystem.CreateFont( fontFamily, size, style );
+			_currentFont = _fontSystem.CreateFont( fontFamily, size, style, GetCurrentTextRenderingHint() );
 
 			if ( _gradientBottomOffset == -1 )
 				ResetTopAndBottomGradientOffsets();
@@ -230,21 +230,26 @@ namespace SudoFont
 				return string.Format( "{0}k", numBytes / 1024 );
 		}
 
-		void SetTextRenderingHint( Graphics g )
+		TextRenderingHint GetCurrentTextRenderingHint()
 		{
 			string val = _hintCombo.Text;
 			if ( val == "SystemDefault" )
-				g.TextRenderingHint = TextRenderingHint.SystemDefault;
+				return TextRenderingHint.SystemDefault;
 			else if ( val == "SingleBitPerPixelGridFit" )
-				g.TextRenderingHint = TextRenderingHint.SingleBitPerPixelGridFit;
+				return TextRenderingHint.SingleBitPerPixelGridFit;
 			else if ( val == "SingleBitPerPixel" )
-				g.TextRenderingHint = TextRenderingHint.SingleBitPerPixel;
+				return TextRenderingHint.SingleBitPerPixel;
 			else if ( val == "AntiAliasGridFit" )
-				g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
+				return TextRenderingHint.AntiAliasGridFit;
 			else if ( val == "AntiAlias" )
-				g.TextRenderingHint = TextRenderingHint.AntiAlias;
+				return TextRenderingHint.AntiAlias;
 			else
-				g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
+				return TextRenderingHint.ClearTypeGridFit;
+		}
+
+		void SetTextRenderingHint( Graphics g )
+		{
+			g.TextRenderingHint = GetCurrentTextRenderingHint();
 		}
 
 		void BuildPackedImage()
@@ -265,8 +270,6 @@ namespace SudoFont
 			{
 				using ( Graphics g = Graphics.FromImage( tempBitmap ) )
 				{
-					SetTextRenderingHint( g );
-
 					// Initialize it to black to start.
 					g.Clear( Color.Black );
 
@@ -1592,7 +1595,7 @@ namespace SudoFont
 
 		string _prevFontFilename = null;
 
-		string _defaultCharacterSet = "0123456789 _*+- ()[]#@\nABCDEFGHIJKLMNOPQRSTUVWXYZ\nabcdefghijklmnopqrstuvwxyz!.,;'";
+		string _defaultCharacterSet = "0123456789 _*+- ()[]#@\nABCDEFGHIJKLMNOPQRSTUVWXYZ\nabcdefghijklmnopqrstuvwxyz!.,;':\"";
 
 		string _currentPreviewText = "Preview text built with RuntimeFont...";
 
