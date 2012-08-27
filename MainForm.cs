@@ -23,7 +23,6 @@ namespace SudoFont
 			_fontPreview.BackColor = Color.Black;
 			_outputPreview.BackColor = Color.Black;
 			ResetCharacterSet();	// Setup a default character set.
-			_characterSetControl.Text = _defaultCharacterSet;
 
 			_alphaOnlyControl.Checked = true;
 
@@ -58,6 +57,8 @@ namespace SudoFont
 			_hintCombo.SelectedIndex = 0;
 
 			InitWithFontSystem( FontSystemEnum.DotNet );
+
+			ClearDirtyFlag();
 		}
 
 		void InitWithFontSystem( FontSystemEnum system )
@@ -252,13 +253,18 @@ namespace SudoFont
 			g.TextRenderingHint = GetCurrentTextRenderingHint();
 		}
 
+		string GetCharacterSetUnion()
+		{
+			return new string( _characterSetControl.Text.Union( _characterSetControl.Text ).ToArray() );
+		}
+
 		void BuildPackedImage()
 		{
 			_packedImage = null;
 			_outputPreview.Invalidate();
 
 			// Remove any duplicates from the character set.
-			string characterSet = new string( _characterSetControl.Text.Union( _characterSetControl.Text ).ToArray() );
+			string characterSet = GetCharacterSetUnion();
 
 			CharacterInfo[] infos = new CharacterInfo[ characterSet.Length ];
 
@@ -660,62 +666,67 @@ namespace SudoFont
 			}
 			
 			Recalculate();
+			MarkDirty();
 		}
 
 		private void _boldOption_CheckedChanged( object sender, EventArgs e )
 		{
 			Recalculate();
+			MarkDirty();
 		}
 
 		private void _italicOption_CheckedChanged( object sender, EventArgs e )
 		{
 			Recalculate();
+			MarkDirty();
 		}
 
 		private void _underlineOption_CheckedChanged( object sender, EventArgs e )
 		{
 			Recalculate();
+			MarkDirty();
 		}
 
 		private void _strikeoutOption_CheckedChanged( object sender, EventArgs e )
 		{
 			Recalculate();
+			MarkDirty();
 		}
 
 		private void _sizeCombo_TextUpdate( object sender, EventArgs e )
 		{
 			Recalculate();
+			MarkDirty();
 		}
 
 		private void _sizeCombo_SelectedIndexChanged( object sender, EventArgs e )
 		{
 			Recalculate();
 			ResetTopAndBottomGradientOffsets();
+			MarkDirty();
 		}
 
 		private void _characterSetControl_TextChanged( object sender, EventArgs e )
 		{
 			Recalculate();
+			MarkDirty();
 		}
 
 		private void _alphaOnlyControl_CheckedChanged( object sender, EventArgs e )
 		{
 			Recalculate();
+			MarkDirty();
 		}
 
 		private void _resetCharacterSetButton_Click( object sender, EventArgs e )
 		{
 			ResetCharacterSet();
+			MarkDirty();
 		}
 
 		void ResetCharacterSet()
 		{
-			string characterSetText = "";
-			for ( int i=32; i < 127; i++ )
-			{
-				characterSetText += ( (Char)i ).ToString();
-			}
-			_characterSetControl.Text = characterSetText;
+			_characterSetControl.Text = _defaultCharacterSet;
 		}
 
 		private void MainForm_Shown( object sender, EventArgs e )
@@ -761,6 +772,8 @@ namespace SudoFont
 						UpdateColorDisplays();
 						Recalculate();
 					}
+
+					ClearDirtyFlag();
 				}
 				catch ( Exception )
 				{
@@ -815,7 +828,7 @@ namespace SudoFont
 
 					int i = line.IndexOf( '=' );
 					if ( i == -1 )
-						return OnLoadError( "Invalid key/value format on line {0}", i );
+						return OnLoadError( "Invalid key/value format on line {0}", curLine );
 
 					string key = line.Substring( 0, i - 1 );
 					string value = line.Substring( i + 2 );
@@ -844,23 +857,24 @@ namespace SudoFont
 					_embedConfigurationOption.Checked = Convert.ToBoolean( GetOption( options, ConfigFileKey_EmbedConfigInFontFile ) );
 					
 					// Set the hint text..
-					string hintText = _hintCombo.Items[0].ToString();
+					string hintText = "";
 					int fontSystem = 0;
 					int gradientTopOffset = 0;
 					int gradientBottomOffset = -1;
 					try
 					{
-						hintText = GetOption( options, ConfigFileKey_TextRenderingHint );
+						hintText = GetOption( options, ConfigFileKey_TextRenderingHint, _hintCombo.Items[0].ToString() );
 
-						gradientTopOffset = Convert.ToInt32( GetOption( options, ConfigFileKey_GradientTopOffset ) );
-						gradientBottomOffset = Convert.ToInt32( GetOption( options, ConfigFileKey_GradientBottomOffset ) );
+						gradientTopOffset = Convert.ToInt32( GetOption( options, ConfigFileKey_GradientTopOffset, "0" ) );
+						gradientBottomOffset = Convert.ToInt32( GetOption( options, ConfigFileKey_GradientBottomOffset, "-1" ) );
 
-						if ( options.ContainsKey( ConfigFileKey_FontSystem ) )
-							fontSystem = Convert.ToInt32( GetOption( options, ConfigFileKey_FontSystem ) );
+						fontSystem = Convert.ToInt32( GetOption( options, ConfigFileKey_FontSystem, "0" ) );
 					}
 					catch ( Exception )
 					{
 					}
+
+					_characterSetControl.Text = GetOption( options, ConfigFileKey_CharacterSet, _defaultCharacterSet );
 
 					_hintCombo.Text = hintText;
 
@@ -895,9 +909,21 @@ namespace SudoFont
 			}
 		}
 
-		string GetOption( Dictionary< string, string > options, string key )
+		string GetOption( Dictionary< string, string > options, string key, string defaultValue=null )
 		{
-			return options[key];
+			string val;
+			if ( options.TryGetValue( key, out val ) )
+			{
+				return val;
+			}
+			else if ( defaultValue != null )
+			{
+				return defaultValue;
+			}
+			else
+			{
+				throw new Exception( "Missing key: " + key );
+			}
 		}
 
 		bool OnLoadError( string error, params object[] args )
@@ -957,6 +983,7 @@ namespace SudoFont
 				fontSystem = 1;
 
 			WriteOption( writer, ConfigFileKey_FontSystem, fontSystem );
+			WriteOption( writer, ConfigFileKey_CharacterSet, GetCharacterSetUnion() );
 		}
 
 		void WriteOption( StreamWriter writer, string optionName, string value )
@@ -998,6 +1025,8 @@ namespace SudoFont
 			
 			// Save out the corresponding PNG file.
 			_packedImage.Save( Path.ChangeExtension( _prevFontFilename, null ) + "-texture.png" );
+
+			ClearDirtyFlag();
 			
 			// Useful for verifying the saving, loading, and rendering/spacing.
 			//SetTestBitmap( SudoFontTest.CreateBitmapFromString( _prevFontFilename, "This is a test string. !@#$%^&*", 0, 0, _currentFont, win32APITest: true ) );
@@ -1571,7 +1600,43 @@ namespace SudoFont
 			}
 		}
 
-	
+		void MarkDirty()
+		{
+			_dirty = true;
+			UpdateTitleText();
+		}
+
+		void ClearDirtyFlag()
+		{
+			_dirty = false;
+			UpdateTitleText();
+		}
+		
+		void UpdateTitleText()
+		{
+			string title = "Sudo Font";
+
+			if ( _dirty )
+				title = "* " + title;
+
+			if ( _prevFontFilename != null )
+				title += string.Format( " ( {0} )", Path.GetFileName( _prevFontFilename ) );
+
+			this.Text = title;
+		}
+
+		private void MainForm_FormClosing( object sender, FormClosingEventArgs e )
+		{
+			if ( _dirty )
+			{
+				if ( MessageBox.Show( "There are unsaved changes. Exit?", "Warning", MessageBoxButtons.YesNo ) == System.Windows.Forms.DialogResult.No )
+					e.Cancel = true;
+			}
+		}
+
+		
+		bool _dirty = false;
+			
 
 		// Config file keys.
 		static readonly string ConfigFilenameHeader = "SudoFont Font Configuration File v1.0";
@@ -1593,9 +1658,11 @@ namespace SudoFont
 		static readonly string ConfigFileKey_BottomColorB = "BtmB";
 		static readonly string ConfigFileKey_FontSystem = "FontSystem";
 
+		static readonly string ConfigFileKey_CharacterSet = "CharacterSet";
+
 		string _prevFontFilename = null;
 
-		string _defaultCharacterSet = "0123456789 _*+- ()[]#@\nABCDEFGHIJKLMNOPQRSTUVWXYZ\nabcdefghijklmnopqrstuvwxyz!.,;':\"";
+		string _defaultCharacterSet = "0123456789 _*+- ()[]#@ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!?.,;':\"";
 
 		string _currentPreviewText = "Preview text built with RuntimeFont...";
 

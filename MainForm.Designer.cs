@@ -560,6 +560,7 @@
 			this.Text = "Sudo Font";
 			this.Activated += new System.EventHandler(this.MainForm_Activated);
 			this.Deactivate += new System.EventHandler(this.MainForm_Deactivate);
+			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.MainForm_FormClosing);
 			this.Shown += new System.EventHandler(this.MainForm_Shown);
 			this.Move += new System.EventHandler(this.MainForm_Move);
 			groupBox1.ResumeLayout(false);
