@@ -308,7 +308,8 @@ namespace SudoFont
 						c.PackedWidth = extents.Width;
 						c.PackedHeight = extents.Height;
 
-						g.FillRectangle( blackBrush, new Rectangle( 0, 0, extents.X + extents.Width, extents.Y + extents.Height ) );
+						// Clear out the previous space used by it.
+						g.FillRectangle( blackBrush, new Rectangle( 0, 0, extents.X + extents.Width + 20, extents.Y + extents.Height + 20 ) );
 					}
 				}
 			}
