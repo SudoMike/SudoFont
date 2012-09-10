@@ -56,7 +56,8 @@ namespace SudoFont
 			_hintCombo.Items.Add( "AntiAlias" );
 			_hintCombo.SelectedIndex = 0;
 
-			_atomicPixelsControl.Text = "4";
+			_atomicPixelsControl.Text = "0";
+			_handleSpecialSuffix.Checked = true;
 
 			InitWithFontSystem( FontSystemEnum.DotNet );
 
@@ -886,6 +887,7 @@ namespace SudoFont
 					int gradientTopOffset = 0;
 					int gradientBottomOffset = -1;
 					int atomicPixels = 0;
+					_handleSpecialSuffix.Checked = true;
 					try
 					{
 						hintText = GetOption( options, ConfigFileKey_TextRenderingHint, _hintCombo.Items[0].ToString() );
@@ -895,6 +897,7 @@ namespace SudoFont
 
 						fontSystem = Convert.ToInt32( GetOption( options, ConfigFileKey_FontSystem, "0" ) );
 						atomicPixels = Convert.ToInt32( GetOption( options, ConfigFileKey_AtomicPixels, "0" ) );
+						_handleSpecialSuffix.Checked = ( Convert.ToInt32( GetOption( options, ConfigFileKey_HandleSpecialSuffix, "1" ) ) == 1 );
 					}
 					catch ( Exception )
 					{
@@ -1012,6 +1015,7 @@ namespace SudoFont
 			WriteOption( writer, ConfigFileKey_FontSystem, fontSystem );
 			WriteOption( writer, ConfigFileKey_AtomicPixels, ReadAtomicPixelsControl() );
 			WriteOption( writer, ConfigFileKey_CharacterSet, GetCharacterSetUnion() );
+			WriteOption( writer, ConfigFileKey_HandleSpecialSuffix, ( _handleSpecialSuffix.Checked ? 1 : 0 ) );
 		}
 
 		void WriteOption( StreamWriter writer, string optionName, string value )
@@ -1051,8 +1055,29 @@ namespace SudoFont
 				}
 			}
 			
+			string textureFilename;
+			if ( _handleSpecialSuffix.Checked )
+			{
+				// This is specific to the sudo engine. It looks for suffixes on texture names like MyTexture-$TabletSmall.png.
+				// If we detect a "-$" followed by 5-15 characters, then we'll grab that and put it after the "-texture".
+				textureFilename = Path.ChangeExtension( _prevFontFilename, null );
+				int lookingFor = textureFilename.IndexOf( "-$" );
+				if ( lookingFor != -1 && textureFilename.IndexOf( '.', lookingFor+2 ) == -1 && textureFilename.IndexOf( '/', lookingFor+2 ) == -1 && textureFilename.IndexOf( '\\', lookingFor+2 ) == -1 )
+				{
+					textureFilename = textureFilename.Substring( 0, lookingFor ) + "-texture" + textureFilename.Substring( lookingFor ) + ".png";
+				}
+				else
+				{
+					textureFilename = Path.ChangeExtension( _prevFontFilename, null ) + "-texture.png";
+				}
+			}
+			else
+			{
+				textureFilename = Path.ChangeExtension( _prevFontFilename, null ) + "-texture.png";
+			}
+
 			// Save out the corresponding PNG file.
-			_packedImage.Save( Path.ChangeExtension( _prevFontFilename, null ) + "-texture.png" );
+			_packedImage.Save( textureFilename );
 
 			ClearDirtyFlag();
 			
@@ -1696,6 +1721,7 @@ namespace SudoFont
 		static readonly string ConfigFileKey_AtomicPixels = "AtomicPixels";
 
 		static readonly string ConfigFileKey_CharacterSet = "CharacterSet";
+		static readonly string ConfigFileKey_HandleSpecialSuffix = "HandleSpecialSuffix";
 
 		string _prevFontFilename = null;
 

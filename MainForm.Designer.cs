@@ -77,6 +77,7 @@
 			this._fontSystemWin32Control = new System.Windows.Forms.ToolStripMenuItem();
 			this._embedConfigurationOption = new System.Windows.Forms.CheckBox();
 			this._atomicPixelsControl = new System.Windows.Forms.TextBox();
+			this._handleSpecialSuffix = new System.Windows.Forms.CheckBox();
 			_sizeLabel = new System.Windows.Forms.Label();
 			label1 = new System.Windows.Forms.Label();
 			label2 = new System.Windows.Forms.Label();
@@ -397,6 +398,7 @@
 			// 
 			// groupBox2
 			// 
+			this.groupBox2.Controls.Add(this._handleSpecialSuffix);
 			this.groupBox2.Controls.Add(atomicPixelsHelp);
 			this.groupBox2.Controls.Add(this._atomicPixelsControl);
 			this.groupBox2.Controls.Add(label7);
@@ -581,6 +583,16 @@
 			atomicPixelsHelp.UseVisualStyleBackColor = true;
 			atomicPixelsHelp.Click += new System.EventHandler(this.atomicPixelsHelp_Click);
 			// 
+			// _handleSpecialSuffix
+			// 
+			this._handleSpecialSuffix.CheckAlign = System.Drawing.ContentAlignment.MiddleRight;
+			this._handleSpecialSuffix.Location = new System.Drawing.Point(552, 32);
+			this._handleSpecialSuffix.Name = "_handleSpecialSuffix";
+			this._handleSpecialSuffix.Size = new System.Drawing.Size(134, 20);
+			this._handleSpecialSuffix.TabIndex = 17;
+			this._handleSpecialSuffix.Text = "Handle Special Suffix";
+			this._handleSpecialSuffix.UseVisualStyleBackColor = true;
+			// 
 			// MainForm
 			// 
 			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -650,6 +662,7 @@
 		private System.Windows.Forms.TextBox _bottomOffsetTextbox;
 		private System.Windows.Forms.TextBox _topOffsetTextbox;
 		private System.Windows.Forms.TextBox _atomicPixelsControl;
+		private System.Windows.Forms.CheckBox _handleSpecialSuffix;
 	}
 }
 
