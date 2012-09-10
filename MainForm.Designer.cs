@@ -38,6 +38,10 @@
 			System.Windows.Forms.GroupBox groupBox3;
 			System.Windows.Forms.Label label5;
 			System.Windows.Forms.Button embedHelp;
+			System.Windows.Forms.Label label7;
+			System.Windows.Forms.Button atomicPixelsHelp;
+			this._bottomOffsetTextbox = new System.Windows.Forms.TextBox();
+			this._topOffsetTextbox = new System.Windows.Forms.TextBox();
 			this._hintCombo = new System.Windows.Forms.ComboBox();
 			this._bottomColorDisplay = new System.Windows.Forms.Panel();
 			this._topColorDisplay = new System.Windows.Forms.Panel();
@@ -72,8 +76,7 @@
 			this._fontSystemDotNetControl = new System.Windows.Forms.ToolStripMenuItem();
 			this._fontSystemWin32Control = new System.Windows.Forms.ToolStripMenuItem();
 			this._embedConfigurationOption = new System.Windows.Forms.CheckBox();
-			this._topOffsetTextbox = new System.Windows.Forms.TextBox();
-			this._bottomOffsetTextbox = new System.Windows.Forms.TextBox();
+			this._atomicPixelsControl = new System.Windows.Forms.TextBox();
 			_sizeLabel = new System.Windows.Forms.Label();
 			label1 = new System.Windows.Forms.Label();
 			label2 = new System.Windows.Forms.Label();
@@ -84,6 +87,8 @@
 			groupBox3 = new System.Windows.Forms.GroupBox();
 			label5 = new System.Windows.Forms.Label();
 			embedHelp = new System.Windows.Forms.Button();
+			label7 = new System.Windows.Forms.Label();
+			atomicPixelsHelp = new System.Windows.Forms.Button();
 			groupBox1.SuspendLayout();
 			groupBox3.SuspendLayout();
 			this.groupBox2.SuspendLayout();
@@ -139,6 +144,22 @@
 			groupBox1.TabIndex = 9;
 			groupBox1.TabStop = false;
 			groupBox1.Text = "Style";
+			// 
+			// _bottomOffsetTextbox
+			// 
+			this._bottomOffsetTextbox.Location = new System.Drawing.Point(146, 189);
+			this._bottomOffsetTextbox.Name = "_bottomOffsetTextbox";
+			this._bottomOffsetTextbox.Size = new System.Drawing.Size(25, 20);
+			this._bottomOffsetTextbox.TabIndex = 14;
+			this._bottomOffsetTextbox.TextChanged += new System.EventHandler(this._bottomOffsetTextbox_TextChanged);
+			// 
+			// _topOffsetTextbox
+			// 
+			this._topOffsetTextbox.Location = new System.Drawing.Point(146, 166);
+			this._topOffsetTextbox.Name = "_topOffsetTextbox";
+			this._topOffsetTextbox.Size = new System.Drawing.Size(25, 20);
+			this._topOffsetTextbox.TabIndex = 13;
+			this._topOffsetTextbox.TextChanged += new System.EventHandler(this._topOffsetTextbox_TextChanged);
 			// 
 			// label6
 			// 
@@ -376,6 +397,9 @@
 			// 
 			// groupBox2
 			// 
+			this.groupBox2.Controls.Add(atomicPixelsHelp);
+			this.groupBox2.Controls.Add(this._atomicPixelsControl);
+			this.groupBox2.Controls.Add(label7);
 			this.groupBox2.Controls.Add(embedHelp);
 			this.groupBox2.Controls.Add(this._resetCharacterSetButton);
 			this.groupBox2.Controls.Add(this._alphaOnlyControl);
@@ -530,21 +554,32 @@
 			this._embedConfigurationOption.Text = "Embed Configuration in Font File";
 			this._embedConfigurationOption.UseVisualStyleBackColor = true;
 			// 
-			// _topOffsetTextbox
+			// _atomicPixelsControl
 			// 
-			this._topOffsetTextbox.Location = new System.Drawing.Point(146, 166);
-			this._topOffsetTextbox.Name = "_topOffsetTextbox";
-			this._topOffsetTextbox.Size = new System.Drawing.Size(25, 20);
-			this._topOffsetTextbox.TabIndex = 13;
-			this._topOffsetTextbox.TextChanged += new System.EventHandler(this._topOffsetTextbox_TextChanged);
+			this._atomicPixelsControl.Location = new System.Drawing.Point(442, 31);
+			this._atomicPixelsControl.Name = "_atomicPixelsControl";
+			this._atomicPixelsControl.Size = new System.Drawing.Size(40, 20);
+			this._atomicPixelsControl.TabIndex = 14;
+			this._atomicPixelsControl.TextChanged += new System.EventHandler(this._atomicPixelsControl_TextChanged);
 			// 
-			// _bottomOffsetTextbox
+			// label7
 			// 
-			this._bottomOffsetTextbox.Location = new System.Drawing.Point(146, 189);
-			this._bottomOffsetTextbox.Name = "_bottomOffsetTextbox";
-			this._bottomOffsetTextbox.Size = new System.Drawing.Size(25, 20);
-			this._bottomOffsetTextbox.TabIndex = 14;
-			this._bottomOffsetTextbox.TextChanged += new System.EventHandler(this._bottomOffsetTextbox_TextChanged);
+			label7.AutoSize = true;
+			label7.Location = new System.Drawing.Point(357, 34);
+			label7.Name = "label7";
+			label7.Size = new System.Drawing.Size(79, 13);
+			label7.TabIndex = 15;
+			label7.Text = "# Atomic Pixels";
+			// 
+			// atomicPixelsHelp
+			// 
+			atomicPixelsHelp.Location = new System.Drawing.Point(488, 31);
+			atomicPixelsHelp.Name = "atomicPixelsHelp";
+			atomicPixelsHelp.Size = new System.Drawing.Size(19, 21);
+			atomicPixelsHelp.TabIndex = 16;
+			atomicPixelsHelp.Text = "?";
+			atomicPixelsHelp.UseVisualStyleBackColor = true;
+			atomicPixelsHelp.Click += new System.EventHandler(this.atomicPixelsHelp_Click);
 			// 
 			// MainForm
 			// 
@@ -614,6 +649,7 @@
 		private System.Windows.Forms.CheckBox _alphaPreviewCheckbox;
 		private System.Windows.Forms.TextBox _bottomOffsetTextbox;
 		private System.Windows.Forms.TextBox _topOffsetTextbox;
+		private System.Windows.Forms.TextBox _atomicPixelsControl;
 	}
 }
 

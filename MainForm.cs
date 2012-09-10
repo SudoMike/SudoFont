@@ -56,6 +56,8 @@ namespace SudoFont
 			_hintCombo.Items.Add( "AntiAlias" );
 			_hintCombo.SelectedIndex = 0;
 
+			_atomicPixelsControl.Text = "4";
+
 			InitWithFontSystem( FontSystemEnum.DotNet );
 
 			ClearDirtyFlag();
@@ -209,7 +211,7 @@ namespace SudoFont
 			// Save the font.
 			Stream stream = new MemoryStream();
 			BinaryWriter writer = new BinaryWriter( stream );
-			WriteFontFileDataToStream( writer );
+			WriteFontFileDataToStream( writer, _packedImage.Width, _packedImage.Height );
 			stream.Position = 0;
 
 			// Load in the RuntimeFont.
@@ -314,14 +316,6 @@ namespace SudoFont
 				}
 			}
 
-			// Figure out the max character size.
-			Size maxSize = new System.Drawing.Size( 0, 0 );
-			foreach ( var c in infos )
-			{
-				maxSize.Width  = Math.Max( maxSize.Width, c.PackedWidth );
-				maxSize.Height = Math.Max( maxSize.Height, c.PackedHeight );
-			}
-
 			int maxImageDimension = 1024;
 
 			// Now, pack all the characters in the output.
@@ -333,6 +327,7 @@ namespace SudoFont
 			for ( int i=0; i < _finalCharacterSet.Length; i++ )
 				_finalCharacterSet[i].SudoFontIndex = i;
 
+			int atomicPixels = ReadAtomicPixelsControl();
 			int packedWidth = 16;
 			int packedHeight = 0;
 			while ( packedWidth < maxImageDimension )
@@ -340,7 +335,7 @@ namespace SudoFont
 				// We started out with a tiny width, so the height was super likely to be larger than the width.
 				// If we finally get it where the width and height are equal, or where width is just one power of 
 				// two larger, then we're happy.
-				packedHeight = PackCharacters( sorted, packedWidth );
+				packedHeight = PackCharacters( sorted, packedWidth, atomicPixels );
 				if ( NextPowerOfTwo( packedWidth ) >= packedHeight )
 					break;
 
@@ -350,6 +345,18 @@ namespace SudoFont
 			// Now render the final bitmap.
 			_packedImage = new Bitmap( packedWidth, NextPowerOfTwo( packedHeight ) );
 			RenderPackedImage( _packedImage, infos, _alphaOnlyControl.Checked );
+		}
+
+		int ReadAtomicPixelsControl()
+		{
+			try
+			{
+				return Convert.ToInt32( _atomicPixelsControl.Text );
+			}
+			catch ( Exception )
+			{
+				return 0;
+			}
 		}
 
 		void RenderPackedImage( Bitmap bitmap, CharacterInfo[] infos, bool alphaOnly )
@@ -449,7 +456,7 @@ namespace SudoFont
 
 		// We're assuming that the infos are sorted by height.
 		// Returns the max Y value of any character.
-		static int PackCharacters( CharacterInfo[] infos, int width, int extraPadX = 0, int extraPadY = 0 )
+		static int PackCharacters( CharacterInfo[] infos, int width, int atomicPixels, int extraPadX = 0, int extraPadY = 0 )
 		{
 			// Find runs..
 			int firstChar = 0;
@@ -460,19 +467,20 @@ namespace SudoFont
 					break;
 
 				// Figure out how many characters we can fit horizontally on this line.
-				int lineWidth = infos[ firstChar ].PackedWidth;
+				int lineWidth = AdjustForAtomicPixels( infos[ firstChar ].PackedWidth, atomicPixels );
 				int lastChar;
 				for ( lastChar=firstChar+1; lastChar < infos.Length; lastChar++ )
 				{
+					int thisCharWidth = AdjustForAtomicPixels( infos[lastChar].PackedWidth, atomicPixels );
 					if ( lastChar != firstChar )
 					{
-						if ( ( lineWidth + extraPadX + infos[lastChar].PackedWidth ) > width )
+						if ( ( lineWidth + extraPadX + thisCharWidth ) > width )
 							break;
 
 						lineWidth += extraPadX;
 					}
 					
-					lineWidth += infos[lastChar].PackedWidth;
+					lineWidth += thisCharWidth;
 				}
 
 				int numCharsInLine = lastChar - firstChar;
@@ -482,20 +490,30 @@ namespace SudoFont
 				for ( int i=0; i < numCharsInLine; i++ )
 					maxHeight = Math.Max( maxHeight, infos[ firstChar + i ].PackedHeight );
 
+				maxHeight = AdjustForAtomicPixels( maxHeight, atomicPixels );
+
 				// Now just add each character in there.
 				int curX = 0;
 				for ( int i=0; i < numCharsInLine; i++ )
 				{
 					infos[ firstChar + i ].PackedX = curX;
 					infos[ firstChar + i ].PackedY = curY;
-					curX += infos[ firstChar + i ].PackedWidth + extraPadX;
+					curX = AdjustForAtomicPixels( curX + infos[ firstChar + i ].PackedWidth + extraPadX, atomicPixels );
 				}
 
 				firstChar += numCharsInLine;
-				curY += maxHeight + extraPadY;
+				curY = AdjustForAtomicPixels( curY + maxHeight + extraPadY, atomicPixels );
 			}
 			
 			return curY;
+		}
+
+		static int AdjustForAtomicPixels( int x, int atomicPixels )
+		{
+			if ( atomicPixels == 0 || ( x % atomicPixels ) == 0 )
+				return x;
+
+			return x + ( atomicPixels - ( x % atomicPixels ) );
 		}
 
 		static int NextPowerOfTwo( int i )
@@ -741,6 +759,11 @@ namespace SudoFont
 			MessageBox.Show( "If you embed the configuration in the font file, then you don't need a separate configuration file. You can just open the (exported) font file in this application to load the configuration." );
 		}
 
+		private void atomicPixelsHelp_Click( object sender, EventArgs e )
+		{
+			MessageBox.Show( "This makes sure that characters are on N-pixel boundaries. It's useful if you plan to downsample the font texture." );
+		}
+
 		private void openMenuItem_Click( object sender, EventArgs e )
 		{
 			OpenFileDialog dlg = new OpenFileDialog();
@@ -862,6 +885,7 @@ namespace SudoFont
 					int fontSystem = 0;
 					int gradientTopOffset = 0;
 					int gradientBottomOffset = -1;
+					int atomicPixels = 0;
 					try
 					{
 						hintText = GetOption( options, ConfigFileKey_TextRenderingHint, _hintCombo.Items[0].ToString() );
@@ -870,11 +894,13 @@ namespace SudoFont
 						gradientBottomOffset = Convert.ToInt32( GetOption( options, ConfigFileKey_GradientBottomOffset, "-1" ) );
 
 						fontSystem = Convert.ToInt32( GetOption( options, ConfigFileKey_FontSystem, "0" ) );
+						atomicPixels = Convert.ToInt32( GetOption( options, ConfigFileKey_AtomicPixels, "0" ) );
 					}
 					catch ( Exception )
 					{
 					}
 
+					_atomicPixelsControl.Text = atomicPixels.ToString();
 					_characterSetControl.Text = GetOption( options, ConfigFileKey_CharacterSet, _defaultCharacterSet );
 
 					_hintCombo.Text = hintText;
@@ -984,6 +1010,7 @@ namespace SudoFont
 				fontSystem = 1;
 
 			WriteOption( writer, ConfigFileKey_FontSystem, fontSystem );
+			WriteOption( writer, ConfigFileKey_AtomicPixels, ReadAtomicPixelsControl() );
 			WriteOption( writer, ConfigFileKey_CharacterSet, GetCharacterSetUnion() );
 		}
 
@@ -1020,7 +1047,7 @@ namespace SudoFont
 			{
 				using ( BinaryWriter writer = new BinaryWriter( outStream ) )
 				{
-					WriteFontFileDataToStream( writer );
+					WriteFontFileDataToStream( writer, _packedImage.Width, _packedImage.Height );
 				}
 			}
 			
@@ -1033,7 +1060,7 @@ namespace SudoFont
 			//SetTestBitmap( SudoFontTest.CreateBitmapFromString( _prevFontFilename, "This is a test string. !@#$%^&*", 0, 0, _currentFont, win32APITest: true ) );
 		}
 
-		void WriteFontFileDataToStream( BinaryWriter writer )
+		void WriteFontFileDataToStream( BinaryWriter writer, int originalTextureWidth, int originalTextureHeight )
 		{
 			// Calculate kernings. This is expensive.
 			List< CharacterKerningInfo > kernings = new List<CharacterKerningInfo>();
@@ -1047,7 +1074,7 @@ namespace SudoFont
 
 			writer.Write( RuntimeFont.FontFileHeader );
 
-			WriteFontInfoSection( writer );
+			WriteFontInfoSection( writer, originalTextureWidth, originalTextureHeight );
 			WriteFontCharactersSection( writer );
 			WriteFontKerningSection( writer, kernings );
 			WriteFontConfigSection( writer );
@@ -1061,12 +1088,14 @@ namespace SudoFont
 			_outputPreview.Invalidate();
 		}
 
-		void WriteFontInfoSection( BinaryWriter writer )
+		void WriteFontInfoSection( BinaryWriter writer, int originalTextureWidth, int originalTextureHeight )
 		{
 			using ( SectionWriter sectionWriter = new SectionWriter( writer, RuntimeFont.FontFile_Section_FontInfo ) )
 			{
 				float heightInPixels = _currentFont.GetHeightInPixels( this );
 				writer.Write( (short)heightInPixels ); // Font height.
+				writer.Write( (short)originalTextureWidth );
+				writer.Write( (short)originalTextureHeight );
 			}
 		}
 
@@ -1635,6 +1664,11 @@ namespace SudoFont
 			}
 		}
 
+		private void _atomicPixelsControl_TextChanged( object sender, EventArgs e )
+		{
+			Recalculate();
+		}
+
 		
 		bool _dirty = false;
 			
@@ -1658,6 +1692,8 @@ namespace SudoFont
 		static readonly string ConfigFileKey_BottomColorG = "BtmG";
 		static readonly string ConfigFileKey_BottomColorB = "BtmB";
 		static readonly string ConfigFileKey_FontSystem = "FontSystem";
+		
+		static readonly string ConfigFileKey_AtomicPixels = "AtomicPixels";
 
 		static readonly string ConfigFileKey_CharacterSet = "CharacterSet";
 

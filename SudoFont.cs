@@ -18,7 +18,13 @@ namespace SudoFont
 			try
 			{
 				// Make sure it's the right version.
-				if ( file.ReadString() != FontFileHeader )
+				string fileHeader = file.ReadString();
+
+				// Check the version number.
+				bool version1_0 = false;
+				if ( fileHeader == "SudoFont1.0" )
+					version1_0 = true;
+				else if ( fileHeader != FontFileHeader )
 					return false;
 
 				bool didReadCharacters = false;
@@ -38,7 +44,7 @@ namespace SudoFont
 					// Read the font info section.
 					if ( sectionID == FontFile_Section_FontInfo )
 					{
-						if ( !ReadFontInfo( file ) )
+						if ( !ReadFontInfo( file, version1_0 ) )
 							return false;
 
 						didReadFontInfo = true;
@@ -91,6 +97,13 @@ namespace SudoFont
 			}
 		}
 
+		// Use this if you mipmap the texture that you load. This will adjust all the
+		// relevant variables (like character offsets
+		public void AdjustForTextureSize( int width, int height )
+		{
+			this.RuntimeScale = (float)width / this.OriginalTextureWidth;
+		}
+
 		public MemoryStream ConfigurationBlockStream
 		{
 			get { return _configurationBlockStream; }
@@ -117,6 +130,12 @@ namespace SudoFont
 			}
 		}
 
+		// Get the line height, accounting for the runtime scaling.
+		public int LineHeight
+		{
+			get { return (int)( this.OriginalLineHeight * this.RuntimeScale ); }
+		}
+
 		// Initialize our 
 		void InitCharactersLookupTable()
 		{
@@ -133,10 +152,17 @@ namespace SudoFont
 			}
 		}
 
-		bool ReadFontInfo( BinaryReader file )
+		bool ReadFontInfo( BinaryReader file, bool version1_0 )
 		{
-			this.LineHeight = file.ReadInt16();
-			return ( this.LineHeight > 0 && this.LineHeight < 9999 );
+			this.OriginalLineHeight = file.ReadInt16();
+
+			if ( !version1_0 )
+			{
+				this.OriginalTextureWidth = file.ReadInt16();
+				this.OriginalTextureHeight = file.ReadInt16();
+			}
+
+			return ( this.OriginalLineHeight > 0 && this.OriginalLineHeight < 9999 );
 		}
 
 		bool ReadCharacters( BinaryReader file )
@@ -238,13 +264,15 @@ namespace SudoFont
 			public short KernAmount;
 		}
 		
+		public float RuntimeScale = 1;
+
 		// This is a lookup table that is used for some really common ASCII characters (values 32 - 128).
 		const int CharactersLookupTable_FirstASCIIValue = 32;
 		const int CharactersLookupTable_LastASCIIValue = 126;
 		short[] _charactersLookupTable;
 
 		// Font file keys.
-		public static readonly string FontFileHeader = "SudoFont1.0";
+		public static readonly string FontFileHeader = "SudoFont1.1";
 		public static readonly short FontFile_Section_FontInfo = 0;		// This is a bunch of info like font height, name, etc.
 		public static readonly short FontFile_Section_Characters = 1;
 		public static readonly short FontFile_Section_Kerning = 2;
@@ -253,7 +281,12 @@ namespace SudoFont
 
 		// All the characters in this font.
 		public Character[] Characters;
-		public int LineHeight;
+		public int OriginalLineHeight;
+
+		// Character.PackedX and PackedY are in terms of this. If you've downsampled your font texture,
+		// these will allow you to still get the right texture coordinates.
+		public int OriginalTextureWidth;
+		public int OriginalTextureHeight;
 
 		// Only valid if keepConfigBlock is true in Load.
 		MemoryStream _configurationBlockStream;
@@ -280,10 +313,12 @@ namespace SudoFont
 				int ic = font.FindCharacter( ch );
 				if ( ic != -1 )
 				{
-					width += font.Characters[ic].XAdvance;
+					float totalXAdvance = font.Characters[ic].XAdvance * font.RuntimeScale;
 					
 					if ( i < str.Length-1 )
-						width += font.Characters[ic].GetKerning( str[i+1] );
+						totalXAdvance += font.Characters[ic].GetKerning( str[i+1] ) * font.RuntimeScale;
+					
+					width += (int)Math.Ceiling( totalXAdvance );
 				}
 			}
 
@@ -304,13 +339,15 @@ namespace SudoFont
 					continue;
 
 				layout[i].SudoFontIndex = whichCharacter;
-				layout[i].XOffset = curX + font.Characters[whichCharacter].XOffset;
-				layout[i].YOffset = curY + font.Characters[whichCharacter].YOffset;
+				layout[i].XOffset = (int)( curX + font.Characters[whichCharacter].XOffset * font.RuntimeScale );
+				layout[i].YOffset = (int)( curY + font.Characters[whichCharacter].YOffset * font.RuntimeScale );
 
-				curX += font.Characters[whichCharacter].XAdvance;
+				float totalXAdvance = font.Characters[whichCharacter].XAdvance * font.RuntimeScale;
 				
 				if ( i+1 < str.Length )
-					curX += font.Characters[whichCharacter].GetKerning( str[i+1] );
+					totalXAdvance += font.Characters[whichCharacter].GetKerning( str[i+1] ) * font.RuntimeScale;
+				
+				curX += (int)Math.Ceiling( totalXAdvance );
 			}
 
 			return layout;
