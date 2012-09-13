@@ -1725,7 +1725,7 @@ namespace SudoFont
 
 		string _prevFontFilename = null;
 
-		string _defaultCharacterSet = "0123456789 _*+- ()[]#@ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!?.,;':\"";
+		string _defaultCharacterSet = "0123456789 _*+- ()[]#@ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!%?.,;':\"";
 
 		string _currentPreviewText = "Preview text built with RuntimeFont...";
 
