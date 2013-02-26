@@ -301,6 +301,13 @@ namespace SudoFont
 						// Make sure we're not accessing outside the bitmap itself. If this letter is larger than 512x512,
 						// then we've got bigger problems elsewhere!
 						Rectangle startingExtents = startingExtentsNullable.Value;
+						
+						// The Win32 font system doesn't account for italics leaning when returning the size from GetTextExtentPoint,
+						// so we compensate for that here. It's hacky, but if we change Win32Font.MeasureString, it'll return a
+						// wrong/guessed value all the time, whereas here we can just scan for where the pixel data is.
+						if ( _italicOption.Checked )
+							startingExtents.Width *= 2;
+
 						startingExtents.Width = Math.Min( startingExtents.Width, tempBitmap.Width );
 						startingExtents.Height = Math.Min( startingExtents.Height, tempBitmap.Height );
 
