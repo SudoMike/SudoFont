@@ -62,6 +62,33 @@ namespace SudoFont
 			InitWithFontSystem( FontSystemEnum.DotNet );
 
 			ClearDirtyFlag();
+
+			// You can uncomment this if need be.
+			// SetDefaultCharacterSetInFonts();
+		}
+
+		// Replace all fonts with the default character set.
+		void SetDefaultCharacterSetInFonts()
+		{
+			string replacementDir = "c:\\mygame";
+
+			List< KeyValuePair< string, string > > errorFilenames = new List< KeyValuePair< string, string > >();
+			string[] filenames = Directory.GetFiles( replacementDir, "*.sfn" ).ToArray();
+			for ( int iCur=0; iCur < filenames.Length; iCur++ )
+			{
+				Debug.WriteLine( string.Format( "({0} of {1}) - {2}", iCur+1, filenames.Length, filenames[iCur] ) );
+
+				string error = InternalLoadFont( filenames[iCur] );
+				if ( error == null )
+				{
+					_characterSetControl.Text = _defaultCharacterSet;
+					FontFile_Save();
+				}
+				else
+				{
+					errorFilenames.Add( new KeyValuePair< string, string >( filenames[iCur], error ) );
+				}
+			}
 		}
 
 		void InitWithFontSystem( FontSystemEnum system )
@@ -772,6 +799,38 @@ namespace SudoFont
 			MessageBox.Show( "This makes sure that characters are on N-pixel boundaries. It's useful if you plan to downsample the font texture." );
 		}
 
+		// Returns null if there is no error. Otherwise it returns the error string.
+		string InternalLoadFont( string filename )
+		{
+			try
+			{
+				// First, load the SudoFont.
+				RuntimeFont loadedFont = new RuntimeFont();
+				using ( Stream stream = File.OpenRead( filename ) )
+				{
+					if ( !loadedFont.Load( new BinaryReader( stream ), keepConfigBlock: true ) )
+						return "Invalid font";
+
+					// Then read the configuration out of it.
+					MemoryStream configBlock = loadedFont.ConfigurationBlockStream;
+					if ( ReadConfigurationFromStream( configBlock ) )
+						_prevFontFilename = filename;
+					else
+						return "Unable to read configuration block";
+
+					UpdateColorDisplays();
+					Recalculate();
+				}
+
+				ClearDirtyFlag();
+				return null;
+			}
+			catch ( Exception )
+			{
+				return "Error loading font";
+			}
+		}
+
 		private void openMenuItem_Click( object sender, EventArgs e )
 		{
 			OpenFileDialog dlg = new OpenFileDialog();
@@ -785,31 +844,10 @@ namespace SudoFont
 			{
 				_dialogsInitialDirectory = Path.GetDirectoryName( dlg.FileName );
 
-				try
+				string error = InternalLoadFont( dlg.FileName );
+				if ( error != null )
 				{
-					// First, load the SudoFont.
-					RuntimeFont loadedFont = new RuntimeFont();
-					using ( Stream stream = File.OpenRead( dlg.FileName ) )
-					{
-						if ( !loadedFont.Load( new BinaryReader( stream ), keepConfigBlock: true ) )
-							MessageBox.Show( "Invalid font" );
-
-						// Then read the configuration out of it.
-						MemoryStream configBlock = loadedFont.ConfigurationBlockStream;
-						if ( ReadConfigurationFromStream( configBlock ) )
-							_prevFontFilename = dlg.FileName;
-						else
-							MessageBox.Show( "Unable to read configuration block" );
-
-						UpdateColorDisplays();
-						Recalculate();
-					}
-
-					ClearDirtyFlag();
-				}
-				catch ( Exception )
-				{
-					MessageBox.Show( "Error loading font" );
+					MessageBox.Show( error );
 				}
 			}
 		}
@@ -1732,7 +1770,7 @@ namespace SudoFont
 
 		string _prevFontFilename = null;
 
-		string _defaultCharacterSet = "0123456789 _*+- ()[]#@ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!%?.,;':\"";
+		string _defaultCharacterSet = "0123456789 _*+- {}()[]<>|`~#@ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!%?&.,;':\"éāíúýāňō";
 
 		string _currentPreviewText = "Preview text built with RuntimeFont...";
 
